@@ -1,13 +1,13 @@
 object Test extends App {
-  /*val tc = TestClass2()
+  val tc = TestClass2()
   val t: tc.Test = tc.Test()
   t.testMethod
   t.testMethod2
   val t2 = tc.Test2()
-  t2.test*/
+  t2.test
 }
 
-/*@virtualContext
+@virtualContext
 class TestClass {
 
   @virtual
@@ -27,4 +27,4 @@ class TestClass2 extends TestClass {
   class Test2 extends Test {
     def test = println("Test")
   }
-}*/
+}

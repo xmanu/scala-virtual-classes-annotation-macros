@@ -73,7 +73,7 @@ object virtualContext {
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(name), EmptyTree), body.map(d => d match {
             case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
               println("vparamss: " + vparamss.map(_.mkString(" ")).mkString("; "))
-              DefDef(mods, newTermName("$init$"), tparams, vparamss, tpt, Block(List(), Literal(Constant(()))))
+              DefDef(mods, newTermName("$init$"), tparams, List(List()), tpt, Block(List(), Literal(Constant(()))))
             case _ => d
           }))
       }
@@ -94,10 +94,11 @@ object virtualContext {
       // family inheritance
       val family = List(virtualTraitName(name, enclName))
 
-      val parentInheritance = if (parentIsVirtualClass(parent, name)) {
+      val parentInheritance = getInheritanceTreeInParents(name, parent.toString).reverse
+      /*if (parentIsVirtualClass(parent, name)) {
         getInheritanceTreeInParents(name, parent.toString).reverse
       } else
-        List()
+        List()*/
         
       println("parentInheritance: " + parentInheritance.mkString(" "))
         
@@ -131,7 +132,7 @@ object virtualContext {
         val tpt = Select(Ident(parentName.toTermName), newTypeName(finalClassName(parentName)))
         val tp = computeType(tpt)
         val fixClassTp = tp.declaration(newTypeName(fixClassName(className, parentName)))
-        if (tp != NoType && tp.baseClasses.length > 0) {
+        if (tp != NoType && tp.baseClasses.length > 0 && fixClassTp.isClass) {
           fixClassTp.asClass.baseClasses.drop(1).dropRight(2).map(bc => bc.name.toString)
         } else
           Nil
@@ -162,18 +163,23 @@ object virtualContext {
       val finalClassBody = noParameterConstructor :: body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
-            val typeDefInner: c.universe.Tree = typeTree(getInheritanceRelation(body, impl, name, parent, enclName))
+            val typeDefInner = typeTree(getInheritanceRelation(body, impl, name, parent, enclName))
 
             val Template(parents, _, _) = impl
 
             val classInner = getInheritanceTree(body, name).map(s => Ident(newTypeName(virtualTraitName(s, enclName))))
 
-            val classInnerParents = getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s)))
+            val classInnerParents = classInner.flatMap(c => getInheritanceTreeInParents(getNameFromSub(c.toString), parent.toString)).map(s => Ident(newTypeName(s)))
             
-            val classInnerParentsAdditions = classInnerParents.flatMap(p => if (!(classInnerParents ++ classInner).map(_.toString).contains(virtualTraitName(getNameFromSub(p.toString), enclName))) List(virtualTraitName(getNameFromSub(p.toString), enclName)) else List()).map(s => Ident(newTypeName(s)))
+            val classAdditions = (classInnerParents ++ classInner).flatMap(p => if (!(classInnerParents ++ classInner).map(_.toString).contains(virtualTraitName(getNameFromSub(p.toString), enclName))) List(virtualTraitName(getNameFromSub(p.toString), enclName)) else List()).map(s => Ident(newTypeName(s)))
 
+            println(name + ";" + enclName + ";" + parent.toString + "\n--------")
+            println("classInner: " + classInner.mkString(" "))
+            println("classInnerParents: " + classInnerParents.mkString(" "))
+            println("classAdditions: " + classAdditions.mkString(" "))
+            
             val fL = List(TypeDef(Modifiers(), name, List(), typeDefInner),
-              ClassDef(mods, fixClassName(name, enclName), List(), Template(classInner ++ classInnerParents ++ classInnerParentsAdditions, emptyValDef, List(noParameterConstructor))))
+              ClassDef(mods, fixClassName(name, enclName), List(), Template(classInner ++ classInnerParents ++ classAdditions, emptyValDef, List(noParameterConstructor))))
 
             if ((mods.flags | ABSTRACT) != mods.flags)
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) :: 
