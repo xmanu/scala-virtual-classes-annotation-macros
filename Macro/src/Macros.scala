@@ -72,6 +72,7 @@ object virtualContext {
         case Template(parents, self, body) =>
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(name), EmptyTree), body.map(d => d match {
             case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
+              println("vparamss: " + vparamss.map(_.mkString(" ")).mkString("; "))
               DefDef(mods, newTermName("$init$"), tparams, vparamss, tpt, Block(List(), Literal(Constant(()))))
             case _ => d
           }))
@@ -93,10 +94,6 @@ object virtualContext {
       // family inheritance
       val family = List(virtualTraitName(name, enclName))
 
-      //println("parents: " + parents.mkString(" "))
-      // are any parents from the top family virtualclasses?
-      //val parentInheritance = parents.filter(p => parentIsVirtualClass(parent, p.toString)).map(_.toString)
-
       val parentInheritance = if (parentIsVirtualClass(parent, name)) {
         getInheritanceTreeInParents(name, parent.toString).reverse
       } else
@@ -109,24 +106,13 @@ object virtualContext {
         case _ => false
       })).map(_.toString)
 
-      //println("body: " + body.mkString("; "))
-      //println("ownInheritance: " + ownInheritance.mkString(" "))
-
-      //val ownInheritanceReplacement: List[String] = if (parentIsVirtualClass(parent, name) && parentInheritance.length > 0) List(parentInheritance(0).take(parentInheritance(0).lastIndexOf("$"))) else List[String]()
-      
       val all = ownInheritance ++ parentInheritance ++ family // TODO: What is right linearization
-      //res
-      
-      //val classInnerParentsAdditions = all.flatMap(p => if (!all.contains(virtualTraitName(getNameFromSub(p.toString), enclName))) List(virtualTraitName(getNameFromSub(p.toString), enclName)) else List())
-      println("all: " + all.mkString(" "))
       
       val res = if (all.length > 2 && getNameFromSub(all.tail.head) != name.toString)
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
       else
           all
          
-      println("res: " + res.mkString(" "))
-          
       res
     }
 
@@ -136,7 +122,6 @@ object virtualContext {
           name.toString :: getInheritanceTree(bodies, parents(0).toString)
         case _ => List()
       })
-      //println("getInheritanceTree: className: " + className.toString + "; " + res.mkString(" "))
       res
     }
 
@@ -144,13 +129,9 @@ object virtualContext {
       println("getInheritanceTreeInParents: className: " + className + "; parentName: " + parentName)
       try {
         val tpt = Select(Ident(parentName.toTermName), newTypeName(finalClassName(parentName)))
-        //println("classInnerParents Tree: " + show(tpt))
         val tp = computeType(tpt)
-        //println("classInnerParents decl: " + tp.declarations.mkString(" "))
         val fixClassTp = tp.declaration(newTypeName(fixClassName(className, parentName)))
-        //println("classInnerParents fixClassTp: " + fixClassTp)
         if (tp != NoType && tp.baseClasses.length > 0) {
-          //println("classInnerParents baseClasses: " + fixClassTp.asClass.baseClasses.mkString(" "))
           fixClassTp.asClass.baseClasses.drop(1).dropRight(2).map(bc => bc.name.toString)
         } else
           Nil
@@ -163,7 +144,6 @@ object virtualContext {
       body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
-            //println("getInheritance: " + getInheritanceRelation(body, impl, name, parent, enclName))
             val inheritRel = getInheritanceRelation(body, impl, name, parent, enclName)
             val typeDefInner: c.universe.Tree = typeTree(inheritRel.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)))
 
@@ -191,9 +171,6 @@ object virtualContext {
             val classInnerParents = getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s)))
             
             val classInnerParentsAdditions = classInnerParents.flatMap(p => if (!(classInnerParents ++ classInner).map(_.toString).contains(virtualTraitName(getNameFromSub(p.toString), enclName))) List(virtualTraitName(getNameFromSub(p.toString), enclName)) else List()).map(s => Ident(newTypeName(s)))
-
-            println("classInner: " + classInner.mkString(" "))
-            println("classInnerParents: " + classInnerParents.mkString(" "))
 
             val fL = List(TypeDef(Modifiers(), name, List(), typeDefInner),
               ClassDef(mods, fixClassName(name, enclName), List(), Template(classInner ++ classInnerParents ++ classInnerParentsAdditions, emptyValDef, List(noParameterConstructor))))
