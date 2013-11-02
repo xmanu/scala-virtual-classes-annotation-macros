@@ -73,8 +73,12 @@ object ExprTest extends App {
 	}
 }
 
-/*@virtualContext class ExprPrefixFormat extends ExprFormat {
+@virtualContext class E2 extends ExprFormat {
+  
+}
+
+@virtualContext class ExprPrefixFormat extends ExprFormat {
   @virtual abstract class BinExpr {
     def format: String = "(" + op + " " + left.format + " " + right.format + ")"
   }
-}*/
+}

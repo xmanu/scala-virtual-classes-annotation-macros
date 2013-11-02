@@ -103,7 +103,7 @@ object virtualContext {
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
       else
         all
-       
+
       res
     }
 
@@ -137,6 +137,18 @@ object virtualContext {
         tp.members.filter(s => s.name.toString.startsWith("VC_TRAIT$")).map(s => getNameFromSub(s.name.toString)).toList
       } catch {
         case e: Throwable => e.printStackTrace(); Nil
+      }
+    }
+
+    def parentContains(parent: String, name: String) = {
+      try {
+        val tpt = Select(Ident(newTermName(parent)), newTypeName(finalClassName(parent)))
+        val tp = computeType(tpt)
+        val res = tp.members.exists(s => s.name.toString == name)
+        //println("parentContains: " + parent + ";" + name + " = " + res)
+        res
+      } catch {
+        case e: Throwable => e.printStackTrace(); false
       }
     }
 
@@ -207,13 +219,19 @@ object virtualContext {
           case _ => Nil
         })
 
-      val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContainsVCClass(finalClassBody, _))
+      val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContainsVCClass(finalClassBody, _)).distinct
 
       val bodyCompletion = toCompleteFromParents.flatMap { name =>
         val typeInner = typeTree(getInheritanceTreeInParents(name, parent.toString))
-        
+
         //TODO: Modifiers
-        makeFinalVirtualClassPart(name, enclName, Modifiers(), typeInner, getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
+
+        val mods = if (parentContains(parent.toString, factoryName(name)))
+          Modifiers()
+        else
+          Modifiers(ABSTRACT)
+        
+        makeFinalVirtualClassPart(name, enclName, mods, typeInner, getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
       }
 
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
