@@ -72,3 +72,9 @@ object ExprTest extends App {
 	  def op: String = "*"
 	}
 }
+
+/*@virtualContext class ExprPrefixFormat extends ExprFormat {
+  @virtual abstract class BinExpr {
+    def format: String = "(" + op + " " + left.format + " " + right.format + ")"
+  }
+}*/
