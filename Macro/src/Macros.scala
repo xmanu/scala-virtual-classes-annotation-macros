@@ -25,9 +25,7 @@ object virtualContext {
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      val res = computeType(parent).members.exists(s => s.isClass && s.name.decoded.startsWith("VC_TRAIT$" + parent.toString + "$" + virtualClass.toString))
-      //println("parentIsVirtualClass: parent: " + parent + "; virtualClass: " + virtualClass + " = " + res)
-      res
+      computeType(parent).members.exists(s => s.isClass && s.name.decoded.startsWith("VC_TRAIT$" + parent.toString + "$" + virtualClass.toString))
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -72,7 +70,6 @@ object virtualContext {
         case Template(parents, self, body) =>
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(name), EmptyTree), body.map(d => d match {
             case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
-              println("vparamss: " + vparamss.map(_.mkString(" ")).mkString("; "))
               DefDef(mods, newTermName("$init$"), tparams, List(List()), tpt, Block(List(), Literal(Constant(()))))
             case _ => d
           }))
@@ -93,18 +90,7 @@ object virtualContext {
       // family inheritance
       val family = List(virtualTraitName(name, enclName))
 
-      val parentInheritance2 = getInheritanceTreeInParents(name, parent.toString).reverse
       val parentInheritance = getInheritanceTreeComplete(bodies, name, enclName, parent.toString)
-      println("parentInheritance: " + parentInheritance.mkString(" "))
-      println("parentInheritance2: " + parentInheritance2.mkString(" "))
-      
-      
-      /*if (parentIsVirtualClass(parent, name)) {
-        getInheritanceTreeInParents(name, parent.toString).reverse
-      } else
-        List()*/
-
-      println("parentInheritance: " + parentInheritance.mkString(" "))
 
       val ownInheritance = parents.filter(p => bodies.exists(b => b match {
         case ClassDef(mods, name, tparams, impl) => (isVirtualClass(mods) && p == name.toString)
@@ -117,8 +103,6 @@ object virtualContext {
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
       else
         all
-
-      println("res: " + res.mkString(" ")) 
        
       res
     }
@@ -133,7 +117,6 @@ object virtualContext {
     }
 
     def getInheritanceTreeInParents(className: TypeName, parentName: TypeName): List[String] = {
-      println("getInheritanceTreeInParents: className: " + className + "; parentName: " + parentName)
       try {
         val tpt = Select(Ident(parentName.toTermName), newTypeName(finalClassName(parentName)))
         val tp = computeType(tpt)
@@ -219,27 +202,19 @@ object virtualContext {
             else
               List())
 
-            println(name + ";" + enclName + ";" + parent.toString + "\n--------")
-            println("classInner: " + classInner.mkString(" "))
-            println("classAdditions: " + classAdditions.mkString(" "))
-
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, (classInner ++ classAdditions).distinct.map(s => Ident(newTypeName(s))))
 
           case _ => Nil
         })
 
       val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContainsVCClass(finalClassBody, _))
-      println("toCompleteFromParents: " + toCompleteFromParents)
 
       val bodyCompletion = toCompleteFromParents.flatMap { name =>
         val typeInner = typeTree(getInheritanceTreeInParents(name, parent.toString))
-        println("typeInner: " + typeInner)
-
+        
         //TODO: Modifiers
         makeFinalVirtualClassPart(name, enclName, Modifiers(), typeInner, getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
       }
-
-      println("bodyCompletion: " + bodyCompletion.mkString(" "))
 
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
 
