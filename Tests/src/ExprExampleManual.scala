@@ -1,4 +1,4 @@
-object Testing extends App {
+object ExprExampleManual extends App {
   val t = ExprFormat()
   val two = t.Constant()
   two.value = 2
@@ -10,7 +10,7 @@ object Testing extends App {
   println(add.format + " = " + add.eval)
 } 
 
-/*abstract class ExprModel extends scala.AnyRef {
+abstract class ExprModel extends scala.AnyRef {
     type Expr >: _root_.scala.Null <: VC_TRAIT$ExprModel$Expr;
     abstract trait VC_TRAIT$ExprModel$Expr extends scala.AnyRef { self: Expr => 
       def eval: Int
@@ -124,4 +124,4 @@ object ExprFormat extends scala.AnyRef {
     }
   };
   def apply() = new VC_FINAL$ExprFormat()
-}*/
+}
