@@ -19,10 +19,10 @@ class TestClass {
 
 @virtualContext
 class TestClass2 extends TestClass {
-  @virtual
+  /*@virtual
   class Test {
     def testMethod2 = println("World!")
-  }
+  }*/
   
   
   @virtual

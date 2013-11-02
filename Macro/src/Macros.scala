@@ -87,42 +87,49 @@ object virtualContext {
     }
 
     def getNameFromSub(name: String) = name.takeRight(name.length - name.lastIndexOf("$") - 1)
-    
+
     def getInheritanceRelation(bodies: List[c.universe.Tree], parents: List[String], name: TypeName, parent: Tree, enclName: TypeName): List[String] = {
-      
+
       // family inheritance
       val family = List(virtualTraitName(name, enclName))
 
-      val parentInheritance = getInheritanceTreeInParents(name, parent.toString).reverse
+      val parentInheritance2 = getInheritanceTreeInParents(name, parent.toString).reverse
+      val parentInheritance = getInheritanceTreeComplete(bodies, name, enclName, parent.toString)
+      println("parentInheritance: " + parentInheritance.mkString(" "))
+      println("parentInheritance2: " + parentInheritance2.mkString(" "))
+      
+      
       /*if (parentIsVirtualClass(parent, name)) {
         getInheritanceTreeInParents(name, parent.toString).reverse
       } else
         List()*/
-        
+
       println("parentInheritance: " + parentInheritance.mkString(" "))
-        
+
       val ownInheritance = parents.filter(p => bodies.exists(b => b match {
         case ClassDef(mods, name, tparams, impl) => (isVirtualClass(mods) && p == name.toString)
         case _ => false
       })).map(_.toString)
 
-      val all = ownInheritance ++ parentInheritance ++ family // TODO: What is right linearization
-      
+      val all = (ownInheritance ++ parentInheritance ++ family).distinct // TODO: What is right linearization
+
       val res = if (all.length > 2 && getNameFromSub(all.tail.head) != name.toString)
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
       else
-          all
-         
+        all
+
+      println("res: " + res.mkString(" ")) 
+       
       res
     }
 
-    def getInheritanceTree(bodies: List[c.universe.Tree], className: TypeName): List[String] = {
+    def getInheritanceTreeComplete(bodies: List[c.universe.Tree], className: TypeName, enclName: TypeName, parent: TypeName): List[String] = {
       val res = bodies.flatMap(b => b match {
         case ClassDef(mods, name, tparams, Template(parents, valDef, body)) if (name == className) =>
-          name.toString :: getInheritanceTree(bodies, parents(0).toString)
-        case _ => List()
+          virtualTraitName(name.toString, enclName) :: getInheritanceTreeComplete(bodies, parents(0).toString, enclName, parent)
+        case _ => getInheritanceTreeInParents(className, parent).reverse
       })
-      res
+      res.distinct
     }
 
     def getInheritanceTreeInParents(className: TypeName, parentName: TypeName): List[String] = {
@@ -139,12 +146,12 @@ object virtualContext {
         case e: Throwable => e.printStackTrace(); Nil
       }
     }
-    
-    def getParentVCClasses(parent: String) : List[String] = {
+
+    def getParentVCClasses(parent: String): List[String] = {
       try {
         val tpt = Select(Ident(newTermName(parent)), newTypeName(finalClassName(parent)))
         val tp = computeType(tpt)
-        tp.members.filter(s => s.name.toString.startsWith("VC_FIX$")).map(s => getNameFromSub(s.name.toString)).toList
+        tp.members.filter(s => s.name.toString.startsWith("VC_TRAIT$")).map(s => getNameFromSub(s.name.toString)).toList
       } catch {
         case e: Throwable => e.printStackTrace(); Nil
       }
@@ -155,7 +162,7 @@ object virtualContext {
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
             val Template(parents, _, _) = impl
-            
+
             val inheritRel = getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName)
             val typeDefInner: c.universe.Tree = typeTree(inheritRel.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)))
 
@@ -172,59 +179,68 @@ object virtualContext {
 
     def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, classParents: List[Tree]): List[c.universe.Tree] = {
       val fL = List(TypeDef(Modifiers(), name, List(), typeDef),
-              ClassDef(mods, fixClassName(name, enclName), List(), Template(classParents, emptyValDef, List(noParameterConstructor))))
+        ClassDef(mods, fixClassName(name, enclName), List(), Template(classParents, emptyValDef, List(noParameterConstructor))))
 
-            if ((mods.flags | ABSTRACT) != mods.flags)
-              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) :: 
-              DefDef(Modifiers(), newTermName(factoryName(name)), List(), List(), TypeTree(), Apply(Select(New(Ident(newTypeName(fixClassName(name, enclName)))), nme.CONSTRUCTOR), List())) :: 
-              fL
-            else
-              fL
+      if ((mods.flags | ABSTRACT) != mods.flags)
+        ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) ::
+          DefDef(Modifiers(), newTermName(factoryName(name)), List(), List(), TypeTree(), Apply(Select(New(Ident(newTypeName(fixClassName(name, enclName)))), nme.CONSTRUCTOR), List())) ::
+          fL
+      else
+        fL
     }
-    
-    def finalClassBodyContains(body: List[Tree], name: String) = {
+
+    def finalClassBodyContainsVCClass(body: List[Tree], name: String) = {
       body.exists(t => t match {
         case ClassDef(_, n, _, _) => name == getNameFromSub(n.toString)
         case _ => false
       })
     }
-    
+
+    def finalClassBodyContains(body: List[Tree], name: String) = {
+      body.exists(t => t match {
+        case ClassDef(_, n, _, _) => name == n.toString
+        case _ => false
+      })
+    }
+
     def finalClass(enclName: TypeName, body: List[c.universe.Tree], parent: Tree) = {
       val finalClassBody: List[c.universe.Tree] = noParameterConstructor :: body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
             val Template(parents, _, _) = impl
-            
+
             val typeDefInner = typeTree(getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName))
 
-            val classInner = getInheritanceTree(body, name).map(s => Ident(newTypeName(virtualTraitName(s, enclName))))
+            val classInner = getInheritanceTreeComplete(body, name, enclName, parent.toString)
 
-            val classInnerParents = classInner.flatMap(c => getInheritanceTreeInParents(getNameFromSub(c.toString), parent.toString)).map(s => Ident(newTypeName(s)))
-            
-            val classAdditions = (classInnerParents ++ classInner).flatMap(p => if (!(classInnerParents ++ classInner).map(_.toString).contains(virtualTraitName(getNameFromSub(p.toString), enclName))) List(virtualTraitName(getNameFromSub(p.toString), enclName)) else List()).map(s => Ident(newTypeName(s)))
+            val classAdditions = classInner.flatMap(p => if (!classInner.contains(virtualTraitName(getNameFromSub(p.toString), enclName)) &&
+              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)))
+              List(virtualTraitName(getNameFromSub(p.toString), enclName))
+            else
+              List())
 
             println(name + ";" + enclName + ";" + parent.toString + "\n--------")
             println("classInner: " + classInner.mkString(" "))
-            println("classInnerParents: " + classInnerParents.mkString(" "))
             println("classAdditions: " + classAdditions.mkString(" "))
-            
-            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, classInner ++ classInnerParents ++ classAdditions)
+
+            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, (classInner ++ classAdditions).distinct.map(s => Ident(newTypeName(s))))
 
           case _ => Nil
         })
-        
-      val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContains(finalClassBody, _))
+
+      val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContainsVCClass(finalClassBody, _))
       println("toCompleteFromParents: " + toCompleteFromParents)
-      
-      val bodyCompletion = toCompleteFromParents.flatMap { name => 
+
+      val bodyCompletion = toCompleteFromParents.flatMap { name =>
         val typeInner = typeTree(getInheritanceTreeInParents(name, parent.toString))
         println("typeInner: " + typeInner)
-      
-        makeFinalVirtualClassPart(name, enclName, Modifiers(), typeInner , getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
+
+        //TODO: Modifiers
+        makeFinalVirtualClassPart(name, enclName, Modifiers(), typeInner, getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
       }
 
       println("bodyCompletion: " + bodyCompletion.mkString(" "))
-      
+
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
 
       ClassDef(Modifiers(), finalClassName(enclName), List(), tmpl)
@@ -235,7 +251,7 @@ object virtualContext {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
           val classDef = ClassDef(Modifiers(ABSTRACT), name, tparams, Template(parents, self, transformBody(body, name, parents(0))))
           // def <init>() = super.<init>()
-          //lazy val objectConstructor =
+          // val objectConstructor =
           //  q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""
           def objectConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
           val newObjectBody: List[Tree] = objectConstructor :: finalClass(name, body, parents(0)) :: DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(newTypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
