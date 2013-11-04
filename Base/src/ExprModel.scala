@@ -1,5 +1,5 @@
 object ExprTest extends App {
-  val em = ExprModel()
+  val em: ExprModel = ExprModel()
   val two = em.Constant()
   two.value = 2
   val three = em.Constant()
@@ -9,21 +9,31 @@ object ExprTest extends App {
   plus.right = three
   println(plus.eval)
   
-  val ef = ExprFormat()
+  val ef = ExprFormatExtended()
+  val three2 = ef.Constant()
+  three2.value = 3
   val five = ef.Constant()
   five.value = 5
   val seven = ef.Constant()
   seven.value = 7
+  val twelf = ef.Constant()
+  twelf.value = 12
   val eight = ef.Constant()
   eight.value = 8
   val mul = ef.Mult()
   mul.left = five
   mul.right = seven
+  val sub = ef.Sub()
+  sub.left = twelf
+  sub.right = eight
   val add2 = ef.Add()
   add2.left = mul
-  add2.right = eight
+  add2.right = sub
+  val div = ef.Div()
+  div.left = add2
+  div.right = three2
   
-  println(add2.format + " = " + add2.eval)
+  println(div.format + " = " + div.eval)
 }
 
 @virtualContext class ExprModel {
@@ -73,12 +83,44 @@ object ExprTest extends App {
 	}
 }
 
-@virtualContext class E2 extends ExprFormat {
+@virtualContext class ExprFormatExtended extends ExprFormat {
+  @virtual class Sub extends BinExpr {
+    def op: String = "-"
+    def eval: Int = left.eval - right.eval
+  }
   
+  @virtual class Div extends BinExpr {
+    def op: String = "/"
+    def eval: Int = left.eval / right.eval
+  }
 }
+
+/*@virtualContext class ExprFormatExtended extends ExprFormat {
+  @virtual abstract class Expr {
+    def formatPre: String
+    def formatPost: String
+  }
+  
+  @virtual abstract class BinExpr {
+    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
+    def formatPost: String = "(" + left.formatPost + " " + right.formatPost + " " + op + ")"
+  }
+}*/
 
 /*@virtualContext class ExprPrefixFormat extends ExprFormat {
   @virtual abstract class BinExpr {
-    def format: String = "(" + op + " " + left.format + " " + right.format + ")"
+    override def format: String = "(" + op + " " + left.format + " " + right.format + ")"
+  }
+}*/
+
+/*@virtualContext class ExprFormatExtended extends ExprFormat {
+  @virtual abstract class Expr {
+    def formatPre: String
+    def formatPost: String
+  }
+  
+  @virtual abstract class BinExpr {
+    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
+    def formatPost: String = "(" + left.formatPost + " " + right.formatPost + " " + op + ")"
   }
 }*/

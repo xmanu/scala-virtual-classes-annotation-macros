@@ -152,7 +152,7 @@ object virtualContext {
       }
     }
 
-    def transformBody(body: List[c.universe.Tree], enclName: TypeName, parent: Tree): List[c.universe.Tree] = {
+    def transformBody(body: List[Tree], enclName: TypeName, parent: Tree): List[Tree] = {
       body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
@@ -167,17 +167,18 @@ object virtualContext {
             if (parentIsVirtualClass(parent, name) || (mods.flags | ABSTRACT) == mods.flags)
               b
             else
-              DefDef(Modifiers(DEFERRED), newTermName(factoryName(name)), List(), List(), Ident(newTypeName(virtualTraitName(name, enclName))), EmptyTree) :: b
+              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) :: 
+              DefDef(Modifiers(DEFERRED), newTermName(factoryName(name)), List(), List(), Ident(name), EmptyTree) :: 
+              b
           case _ => List(b)
         })
     }
 
-    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, classParents: List[Tree]): List[c.universe.Tree] = {
+    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, classParents: List[Tree]): List[Tree] = {
       val fL = List(TypeDef(Modifiers(), name, List(), typeDef),
         ClassDef(mods, fixClassName(name, enclName), List(), Template(classParents, emptyValDef, List(noParameterConstructor))))
 
       if ((mods.flags | ABSTRACT) != mods.flags)
-        ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) ::
           DefDef(Modifiers(), newTermName(factoryName(name)), List(), List(), TypeTree(), Apply(Select(New(Ident(newTypeName(fixClassName(name, enclName)))), nme.CONSTRUCTOR), List())) ::
           fL
       else
@@ -223,8 +224,6 @@ object virtualContext {
 
       val bodyCompletion = toCompleteFromParents.flatMap { name =>
         val typeInner = typeTree(getInheritanceTreeInParents(name, parent.toString))
-
-        //TODO: Modifiers
 
         val mods = if (parentContains(parent.toString, factoryName(name)))
           Modifiers()
