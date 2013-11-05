@@ -159,7 +159,7 @@ object virtualContext {
             val Template(parents, _, _) = impl
 
             val inheritRel = getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName)
-            val typeDefInner: c.universe.Tree = typeTree(inheritRel.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)))
+            val typeDefInner: c.universe.Tree = typeTree(inheritRel) //.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)) // non-volatile perk, not needed any more?
 
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeDefInner)),
@@ -192,7 +192,7 @@ object virtualContext {
       })
     }
 
-    def finalClassBodyContains(body: List[Tree], name: String) = {
+    def bodyContains(body: List[Tree], name: String) = {
       body.exists(t => t match {
         case ClassDef(_, n, _, _) => name == n.toString
         case _ => false
@@ -203,6 +203,7 @@ object virtualContext {
       val finalClassBody: List[c.universe.Tree] = noParameterConstructor :: body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
+            // TODO add possibly missing typeDefs...
             val Template(parents, _, _) = impl
 
             val typeDefInner = typeTree(getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName))
@@ -223,14 +224,22 @@ object virtualContext {
       val toCompleteFromParents = getParentVCClasses(parent.toString).filter(!finalClassBodyContainsVCClass(finalClassBody, _)).distinct
 
       val bodyCompletion = toCompleteFromParents.flatMap { name =>
-        val typeInner = typeTree(getInheritanceTreeInParents(name, parent.toString))
+        val inheritance = getInheritanceTreeInParents(name, parent.toString)
+        val missing = inheritance.flatMap(s => 
+          if (bodyContains(body, getNameFromSub(s)))
+            List(virtualTraitName(getNameFromSub(s), enclName))
+          else
+            List()
+        ).distinct
+        
+        val typeInner = typeTree(inheritance ++ missing)
 
         val mods = if (parentContains(parent.toString, factoryName(name)))
           Modifiers()
         else
           Modifiers(ABSTRACT)
-        
-        makeFinalVirtualClassPart(name, enclName, mods, typeInner, getInheritanceTreeInParents(name, parent.toString).map(s => Ident(newTypeName(s))))
+          
+        makeFinalVirtualClassPart(name, enclName, mods, typeInner, (inheritance ++ missing).map(s => Ident(newTypeName(s))))
       }
 
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
