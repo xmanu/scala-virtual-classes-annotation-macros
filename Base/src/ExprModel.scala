@@ -139,15 +139,3 @@ object ExprTest extends App {
     override def format: String = "(" + op + " " + left.format + " " + right.format + ")"
   }
 }
-
-/*@virtualContext class ExprFormatExtended extends ExprFormat {
-  @virtual abstract class Expr {
-    def formatPre: String
-    def formatPost: String
-  }
-  
-  @virtual abstract class BinExpr {
-    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
-    def formatPost: String = "(" + left.formatPost + " " + right.formatPost + " " + op + ")"
-  }
-}*/

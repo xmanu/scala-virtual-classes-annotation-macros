@@ -1,4 +1,4 @@
-object ExprExampleManual extends App {
+/*object ExprExampleManual extends App {
   val t = ExprPrefixFormat()
   val two = t.Constant()
   two.value = 2
@@ -176,4 +176,4 @@ abstract class ExprFormat extends ExprModel {
       }
     };
     def apply() = new VC_FINAL$ExprPrefixFormat()
-  };
+  };*/

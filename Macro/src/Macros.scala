@@ -18,14 +18,14 @@ object virtualContext {
     def finalClassName(className: TypeName) =
       "VC_FINAL$" + className
 
-    def noParameterConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
-
+    def noParameterConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))) 
+    
     def isVirtualClass(mods: c.universe.Modifiers) = {
       mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()"))
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.isClass && s.name.decoded.startsWith("VC_TRAIT$" + parent.toString + "$" + virtualClass.toString))
+      computeType(parent).members.exists(s => s.name.decoded.startsWith("VC_TRAIT$" + parent.toString + "$" + virtualClass.toString))
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -63,14 +63,14 @@ object virtualContext {
 
     /**
      * we converted the class to a trait so change the constructor from <init> to $init$ and remove the super call...
-     * TODO: re-insert the body...
      */
     def convertToTraitConstructor(templ: c.universe.Template, name: TypeName): c.universe.Template = {
       templ match {
         case Template(parents, self, body) =>
+          println("Template: ("+parents.mkString("|")+","+self+","+body.mkString(";"))
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(name), EmptyTree), body.map(d => d match {
-            case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
-              DefDef(mods, newTermName("$init$"), tparams, List(List()), tpt, Block(List(), Literal(Constant(()))))
+            case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>" || name.toString == "$init$") =>
+              DefDef(Modifiers(), newTermName("$init$"), tparams, List(List()), tpt, Block(List(), Literal(Constant(()))))
             case _ => d
           }))
       }
@@ -155,7 +155,10 @@ object virtualContext {
     def transformBody(body: List[Tree], enclName: TypeName, parent: Tree): List[Tree] = {
       body.flatMap(b =>
         b match {
-          case ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
+          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
+            if (mods.hasFlag(TRAIT))
+              c.error(cd.pos, "Only classes can be declared as virtual.")
+            
             val Template(parents, _, _) = impl
 
             val inheritRel = getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName)
@@ -163,8 +166,9 @@ object virtualContext {
 
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeDefInner)),
-              ClassDef(Modifiers(ABSTRACT | DEFAULTPARAM), virtualTraitName(name, enclName), tparams, convertToTraitConstructor(impl, name)))
-            if (parentIsVirtualClass(parent, name) || (mods.flags | ABSTRACT) == mods.flags)
+              ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, convertToTraitConstructor(impl, name)))
+            println("mods: " + name.toString + ": " + mods.toString + " = " + mods.hasFlag(ABSTRACT))
+            if (parentIsVirtualClass(parent, name) || (mods.hasFlag(ABSTRACT)))
               b
             else
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) :: 
@@ -178,7 +182,7 @@ object virtualContext {
       val fL = List(TypeDef(Modifiers(), name, List(), typeDef),
         ClassDef(mods, fixClassName(name, enclName), List(), Template(classParents, emptyValDef, List(noParameterConstructor))))
 
-      if ((mods.flags | ABSTRACT) != mods.flags)
+      if (!(mods.hasFlag(ABSTRACT)))
           DefDef(Modifiers(), newTermName(factoryName(name)), List(), List(), TypeTree(), Apply(Select(New(Ident(newTypeName(fixClassName(name, enclName)))), nme.CONSTRUCTOR), List())) ::
           fL
       else
@@ -254,8 +258,7 @@ object virtualContext {
           // def <init>() = super.<init>()
           // val objectConstructor =
           //  q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""
-          def objectConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
-          val newObjectBody: List[Tree] = objectConstructor :: finalClass(name, body, parents(0)) :: DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(newTypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
+          val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents(0)) :: DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(newTypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
           val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), emptyValDef, newObjectBody)
           val newObjectDef = ModuleDef(Modifiers(), name.toTermName, newObjectTemplate)
           Block(List(classDef, newObjectDef), Literal(Constant()))
@@ -284,7 +287,7 @@ object virtualMacro {
 }
 
 class virtual extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro virtualMacro.impl
+  //def macroTransform(annottees: Any*) = macro virtualMacro.impl
 }
 
 object printMacro {

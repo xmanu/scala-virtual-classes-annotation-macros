@@ -46,7 +46,7 @@ abstract class A extends X {
 }
 
 object A {
-  @print class VC_FINAL$A extends A {
+  class VC_FINAL$A extends A {
     type Y = VC_TRAIT$Y with VC_TRAIT$A$Y
 
     class VC_FIX$A$Y extends VC_TRAIT$Y with VC_TRAIT$A$Y {
