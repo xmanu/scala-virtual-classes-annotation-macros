@@ -15,6 +15,10 @@ class TestClass {
     def testMethod = println("Hello")
     def value = 2
   }
+  
+  /*@virtual class Test3[T <: Test] {
+    
+  }*/
 }
 
 @virtualContext

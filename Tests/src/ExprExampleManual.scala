@@ -10,7 +10,7 @@ object ExprExampleManual extends App {
   println(add.format + " = " + add.eval)
 }
 
- abstract class ExprModel extends scala.AnyRef {
+ trait ExprModel extends scala.AnyRef {
     type Expr >: _root_.scala.Null <: VC_TRAIT$ExprModel$Expr;
     abstract trait VC_TRAIT$ExprModel$Expr extends scala.AnyRef { self: Expr => 
       def eval: Int
@@ -71,7 +71,7 @@ object ExprExampleManual extends App {
   };
 
 
-abstract class ExprFormat extends ExprModel {
+trait ExprFormat extends ExprModel {
     type Expr >: _root_.scala.Null <: VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprFormat$Expr;
     abstract trait VC_TRAIT$ExprFormat$Expr extends scala.AnyRef { self: Expr => 
       def format: String

@@ -120,6 +120,12 @@ object ExprTest extends App {
 	}
 }
 
+/*@virtualContext class ExprFormatChain extends ExprFormat with ExprModelChain {
+  @virtual abstract class Chain {
+    def format: String = "(" + chain.mkString(" + ") + ")"
+  }
+}*/
+
 @virtualContext class ExprFormatExtended extends ExprFormat {
   @virtual class Sub extends BinExpr {
     def op: String = "-"

@@ -19,6 +19,7 @@ object virtualContext {
       "VC_FINAL$" + className
 
     def noParameterConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))) 
+    def noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
     
     def isVirtualClass(mods: c.universe.Modifiers) = {
       mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()"))
@@ -69,8 +70,8 @@ object virtualContext {
         case Template(parents, self, body) =>
           println("Template: ("+parents.mkString("|")+","+self+","+body.mkString(";"))
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(name), EmptyTree), body.map(d => d match {
-            case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>" || name.toString == "$init$") =>
-              DefDef(Modifiers(), newTermName("$init$"), tparams, List(List()), tpt, Block(List(), Literal(Constant(()))))
+            case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
+              noParameterTraitConstructor
             case _ => d
           }))
       }
@@ -174,6 +175,8 @@ object virtualContext {
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Ident(newTermName(factoryName(name))))))) :: 
               DefDef(Modifiers(DEFERRED), newTermName(factoryName(name)), List(), List(), Ident(name), EmptyTree) :: 
               b
+          case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
+              List(noParameterTraitConstructor)
           case _ => List(b)
         })
     }
@@ -254,7 +257,7 @@ object virtualContext {
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
-          val classDef = ClassDef(Modifiers(ABSTRACT), name, tparams, Template(parents, self, transformBody(body, name, parents(0))))
+          val classDef = ClassDef(Modifiers(ABSTRACT | TRAIT), name, tparams, Template(parents, self, transformBody(body, name, parents(0))))
           // def <init>() = super.<init>()
           // val objectConstructor =
           //  q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""
