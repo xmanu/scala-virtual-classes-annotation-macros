@@ -99,7 +99,7 @@ object virtualContext {
 
       val all = (ownInheritance ++ parentInheritance ++ family).distinct // TODO: What is right linearization
 
-      val res = if (all.length > 2 && getNameFromSub(all.tail.head) != name.toString)
+      val res = if (all.length >= 2 && getNameFromSub(all.tail.head) != name.toString)
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
       else
         all

@@ -1,12 +1,14 @@
 object ExprTest extends App {
-  val em: ExprModel = ExprModel()
+  val em: ExprModelChain = ExprModelChain()
   val two = em.Constant()
   two.value = 2
   val three = em.Constant()
   three.value = 3
+  val chain = em.AddChain()
+  chain.chain = List(three, two, two)
   val plus = em.Add()
   plus.left = two
-  plus.right = three
+  plus.right = chain
   println(plus.eval)
   
   val ef = ExprFormatExtended()
@@ -79,6 +81,20 @@ object ExprTest extends App {
 	@virtual class Mult extends BinExpr {
 	  def eval: Int = left.eval * right.eval
 	}
+}
+
+@virtualContext class ExprModelChain extends ExprModel {
+  @virtual abstract class Chain extends Expr {
+    var chain: List[Expr] = null
+  }
+  
+  @virtual class AddChain extends Chain {
+    def eval: Int = chain.foldRight(0)(_.eval + _)
+  }
+  
+  @virtual class MultChain extends Chain {
+    def eval: Int = chain.foldRight(1)(_.eval * _)
+  }
 }
 
 @virtualContext class ExprFormat extends ExprModel {
