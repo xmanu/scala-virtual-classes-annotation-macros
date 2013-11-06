@@ -157,7 +157,7 @@ object virtualContext {
         b match {
           case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
             if (mods.hasFlag(TRAIT))
-              c.error(cd.pos, "Only classes can be declared as virtual.")
+              c.error(cd.pos, "Only classes can be declared as virtual (they will be converted to traits though).")
             
             val Template(parents, _, _) = impl
 
