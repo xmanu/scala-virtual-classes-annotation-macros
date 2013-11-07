@@ -1,5 +1,5 @@
 object ExprTest extends App {
-  val em: ExprModelChain = ExprModelChain()
+  val em = ExprModelChain()
   val two = em.Constant()
   two.value = 2
   val three = em.Constant()
@@ -35,6 +35,7 @@ object ExprTest extends App {
   div.left = add2
   div.right = three2
   println(div.c.eval)
+  println(div.rest)
   
   println(div.format + " = " + div.eval)
   
@@ -122,7 +123,16 @@ object ExprTest extends App {
 
 /*@virtualContext class ExprFormatChain extends ExprFormat with ExprModelChain {
   @virtual abstract class Chain {
-    def format: String = "(" + chain.mkString(" + ") + ")"
+    def op: String
+    def format: String = "(" + chain.mkString(" " + op + " ") + ")"
+  }
+  
+  @virtual class AddChain {
+    def op = "+"
+  }
+  
+  @virtual class MultChain {
+    def op = "*"
   }
 }*/
 
@@ -136,6 +146,9 @@ object ExprTest extends App {
     def op: String = "/"
     def eval: Int = left.eval / right.eval
     val c: Constant = Constant()
+    c.value = 4
+    
+    def rest: Int = left.eval % right.eval
   }
 }
 
@@ -152,7 +165,7 @@ object ExprTest extends App {
   
   @virtual abstract class BinExpr {
     def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
-    def formatPost: String = "(" + left.formatPost + " " + right.formatPost + " " + op + ")"
+    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
   }
 }
 
