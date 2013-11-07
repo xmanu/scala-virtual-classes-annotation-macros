@@ -86,17 +86,26 @@ object virtualContext {
 
     def getNameFromSub(name: String) = name.takeRight(name.length - name.lastIndexOf("$") - 1)
 
-    def getInheritanceRelation(bodies: List[c.universe.Tree], parents: List[String], name: TypeName, parent: Tree, enclName: TypeName): List[String] = {
+    def getInheritanceRelation(bodies: List[c.universe.Tree], parents: List[Tree], name: TypeName, parent: Tree, enclName: TypeName): List[String] = {
 
       // family inheritance
       val family = List(virtualTraitName(name, enclName))
 
       val parentInheritance = getInheritanceTreeComplete(bodies, name, enclName, parent.toString)
 
-      val ownInheritance = parents.filter(p => bodies.exists(b => b match {
-        case ClassDef(mods, name, tparams, impl) => (isVirtualClass(mods) && p == name.toString)
+      println("parents: " + showRaw(parents))
+      
+      val ownInheritance = parents.filter(p => {
+        val parentName = p match {
+          case Ident(typeName) => typeName.toString
+          case AppliedTypeTree(Ident(typeName), _) => typeName.toString
+          case _ => p.toString
+        }
+        bodies.exists(b => 
+        b match {
+        case ClassDef(mods, name, tparams, impl) => (isVirtualClass(mods) && parentName == name.toString)
         case _ => false
-      })).map(_.toString)
+      })}).map(_.toString)
 
       val all = (ownInheritance ++ parentInheritance ++ family).distinct // TODO: What is right linearization
 
@@ -200,13 +209,13 @@ object virtualContext {
           case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
             if (mods.hasFlag(TRAIT))
               c.error(cd.pos, "Only classes can be declared as virtual (they will be converted to traits though).")
-            //TODO: suppport type parameters
+            //TODO: support type parameters
             //if (!tparams.isEmpty)
             //  c.error(cd.pos, "Type parameters are currently not supported.")
 
             val Template(parents, _, _) = impl
 
-            val inheritRel = getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName)
+            val inheritRel = getInheritanceRelation(body, parents, name, parent, enclName)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
             println("inheritRelMapped: " + inheritRelMapped.mkString(" | "))
             val typeDefInner: c.universe.Tree = typeTree(inheritRelMapped) //.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)) // non-volatile perk, not needed any more?
@@ -266,7 +275,7 @@ object virtualContext {
             // TODO add possibly missing typeDefs...
             val Template(parents, _, _) = impl
 
-            val typeDefInner = typeTree(mapInheritanceRelation(getInheritanceRelation(body, parents.map(_.toString), name, parent, enclName), body))
+            val typeDefInner = typeTree(mapInheritanceRelation(getInheritanceRelation(body, parents, name, parent, enclName), body))
 
             val classInner = getInheritanceTreeComplete(body, name, enclName, parent.toString)
 

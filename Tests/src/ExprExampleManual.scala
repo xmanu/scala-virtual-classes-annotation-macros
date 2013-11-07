@@ -118,37 +118,7 @@ trait ExprFormat extends ExprModel {
     def apply() = new VC_FINAL$ExprFormat()
   };
   
-  /*abstract class ExprPrefixFormat extends ExprFormat {
-    type BinExpr >: _root_.scala.Null <: Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprFormat$Expr;
-    abstract trait VC_TRAIT$ExprPrefixFormat$BinExpr extends scala.AnyRef { self: BinExpr => 
-      override def format: String = "(".$plus(op).$plus(" ").$plus(left.format).$plus(" ").$plus(right.format).$plus(")")
-    }
-  };
-  object ExprPrefixFormat extends scala.AnyRef {
-    class VC_FINAL$ExprPrefixFormat extends ExprPrefixFormat {
-      type BinExpr = Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprPrefixFormat$BinExpr;
-      abstract class VC_FIX$ExprPrefixFormat$BinExpr extends VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprPrefixFormat$BinExpr {
-      };
-      def VC_NEW$Mult = new VC_FIX$ExprPrefixFormat$Mult();
-      type Mult = VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprPrefixFormat$BinExpr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprFormat$Mult with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprModel$Mult;
-      class VC_FIX$ExprPrefixFormat$Mult extends VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprPrefixFormat$BinExpr with VC_TRAIT$ExprFormat$Mult with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprModel$Mult {
-      };
-      def VC_NEW$Add = new VC_FIX$ExprPrefixFormat$Add();
-      type Add = VC_TRAIT$ExprFormat$Expr  with VC_TRAIT$ExprFormat$BinExpr  with VC_TRAIT$ExprFormat$Add with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprModel$Add with VC_TRAIT$ExprPrefixFormat$BinExpr;
-      class VC_FIX$ExprPrefixFormat$Add extends VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprPrefixFormat$BinExpr with VC_TRAIT$ExprFormat$Add with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprModel$Add {
-      };
-      def VC_NEW$Constant = new VC_FIX$ExprPrefixFormat$Constant();
-      type Constant = VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprFormat$Constant with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$Constant;
-      class VC_FIX$ExprPrefixFormat$Constant extends VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprFormat$Constant with VC_TRAIT$ExprModel$Expr with VC_TRAIT$ExprModel$Constant {
-      };
-      type Expr = VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprModel$Expr;
-      abstract class VC_FIX$ExprPrefixFormat$Expr extends VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprModel$Expr {
-      }
-    };
-    def apply() = new VC_FINAL$ExprPrefixFormat()
-  };*/
-  
-  abstract class ExprPrefixFormat extends ExprFormat {
+  trait ExprPrefixFormat extends ExprFormat {
     type BinExpr >: _root_.scala.Null <: Expr with VC_TRAIT$ExprModel$BinExpr with VC_TRAIT$ExprFormat$BinExpr with VC_TRAIT$ExprFormat$Expr with VC_TRAIT$ExprPrefixFormat$BinExpr;
     abstract trait VC_TRAIT$ExprPrefixFormat$BinExpr extends scala.AnyRef { self: BinExpr => 
       override def format: String = "(".$plus(op).$plus(" ").$plus(left.format).$plus(" ").$plus(right.format).$plus(")")
