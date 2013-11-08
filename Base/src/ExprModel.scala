@@ -152,7 +152,7 @@ object ExprTest extends App {
   }
 }
 
-@virtualContext class ExprFormatWithPrePost extends ExprFormat {
+@virtualContext class ExprFormatPrePost extends ExprModel {
   @virtual abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -164,8 +164,16 @@ object ExprTest extends App {
   }
   
   @virtual abstract class BinExpr {
-    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
-    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
+    def op2: String
+    def formatPre: String = "(" + op2 + " " + left.formatPre + " " + right.formatPre + ")"
+    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op2
+  }
+  
+  @virtual class Add {
+    def op2 = "+"
+  }
+  @virtual class Mult {
+    def op2 = "*"
   }
 }
 
@@ -173,4 +181,8 @@ object ExprTest extends App {
   @virtual abstract class BinExpr {
     override def format: String = "(" + op + " " + left.format + " " + right.format + ")"
   }
+}
+
+@virtualContext class ExprFormatWithPrePost extends ExprFormat with ExprFormatPrePost {
+  
 }
