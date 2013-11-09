@@ -68,7 +68,7 @@ object virtualContext {
     def convertToTraitConstructor(templ: c.universe.Template, name: TypeName, tparams: List[TypeDef], bodies: List[Tree]): c.universe.Template = {
       templ match {
         case Template(parents, self, body) =>
-          println("Template: (" + parents.mkString("|") + "," + self + "," + body.mkString(";"))
+          //println("Template: (" + parents.mkString("|") + "," + self + "," + body.mkString(";"))
           Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, bodies), EmptyTree), body.map(d => d match {
             case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
               noParameterTraitConstructor
@@ -104,7 +104,7 @@ object virtualContext {
 
       val parentInheritance = getInheritanceTreeComplete(bodies, name, enclName, parents)
 
-      println("parents: " + showRaw(vc_parents))
+      //println("parents: " + showRaw(vc_parents))
 
       val ownInheritance = vc_parents.filter(p => {
         val parentName = getNameFromTree(p)
@@ -115,7 +115,7 @@ object virtualContext {
           })
       }).map(_.toString)
 
-      println("parentsString: " + vc_parents.mkString(" "))
+      //println("parentsString: " + vc_parents.mkString(" "))
 
       val all = (ownInheritance ++ parentInheritance ++ family).distinct // TODO: What is right linearization
 
@@ -184,10 +184,11 @@ object virtualContext {
     }
 
     def getTypeParams(name: TypeName, bodies: List[Tree]) = {
-      println("getTypeParams: " + name)
+      //println("getTypeParams: " + name)
       val res = bodies.map(b => b match {
         case ClassDef(_, n, tparams, impl) if (n.toString == getNameFromSub(name.toString)) =>
-          println("getTypeParams: " + tparams); Some(tparams)
+          //println("getTypeParams: " + tparams); 
+          Some(tparams)
         case _ => None
       })
       val res2 = res.filter(o => o.isDefined)
@@ -198,7 +199,7 @@ object virtualContext {
     }
 
     def getTypeNames(tparams: List[TypeDef]) = {
-      println("getTypeNames: " + tparams.mkString(" | "))
+      //println("getTypeNames: " + tparams.mkString(" | "))
       tparams.map(t => t match {
         case TypeDef(mods, name, tparams, rhs) => name
       })
@@ -206,20 +207,17 @@ object virtualContext {
 
     def getTypeApplied(name: TypeName, bodies: List[Tree]) = {
       val typeParams = getTypeParams(getNameFromSub(name.toString), bodies)
-      if (typeParams.isEmpty)
+      if (typeParams.isEmpty || typeParams.get.isEmpty)
         Ident(name)
       else
         AppliedTypeTree(Ident(name), getTypeNames(typeParams.get).map(t => Ident(t)))
     }
 
     def mapInheritanceRelation(inheritRel: List[String], bodies: List[Tree]) = {
-      println("mapInheritanceRelation: " + inheritRel.mkString(" | "))
+      //println("mapInheritanceRelation: " + inheritRel.mkString(" | "))
       val inheritRelMapped = inheritRel.map(s =>
-        if (getTypeParams(getNameFromSub(s), bodies).isDefined)
-          AppliedTypeTree(Ident(newTypeName(s)), getTypeNames(getTypeParams(getNameFromSub(s), bodies).get).map(t => Ident(t)))
-        else
-          Ident(newTypeName(s)))
-      println("mapInheritanceRelationMapped: " + inheritRel.mkString(" | "))
+        getTypeApplied(s, bodies))
+      //println("mapInheritanceRelationMapped: " + inheritRel.mkString(" | "))
       inheritRelMapped
     }
     
@@ -250,13 +248,13 @@ object virtualContext {
 
             val inheritRel = getInheritanceRelation(body, vc_parents, name, parents, enclName)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
-            println("inheritRelMapped: " + inheritRelMapped.mkString(" | "))
+            //println("inheritRelMapped: " + inheritRelMapped.mkString(" | "))
             val typeDefInner: c.universe.Tree = typeTree(inheritRelMapped) //.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)) // non-volatile perk, not needed any more?
 
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, convertToTraitConstructor(impl, name, tparams, body)))
-            println("mods: " + name.toString + ": " + mods.toString + " = " + mods.hasFlag(ABSTRACT))
+            //println("mods: " + name.toString + ": " + mods.toString + " = " + mods.hasFlag(ABSTRACT))
             if (parentIsVirtualClass(parents(0), name) || (mods.hasFlag(ABSTRACT)))
               b
             else
@@ -268,11 +266,11 @@ object virtualContext {
           case _ => List(b)
         })
         val mixinParents = getMixinNeededTypes(parents)
-        println("mixinParents: " + mixinParents.mkString(" "))
+        //println("mixinParents: " + mixinParents.mkString(" "))
         val mixinTransform = mixinParents.map(p => {
           val inheritRel = getInheritanceRelation(body, List(), p, parents, enclName)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
-            println("inheritRelMapped: " + inheritRelMapped.mkString(" | "))
+            //println("inheritRelMapped: " + inheritRelMapped.mkString(" | "))
             val typeDefInner: c.universe.Tree = typeTree(inheritRelMapped) //.filter(s => !parentIsVirtualClass(parent, name) || inheritRel.length < 3 || s != virtualTraitName(name, enclName)) // non-volatile perk, not needed any more?
 
           
@@ -282,7 +280,7 @@ object virtualContext {
     }
 
     def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree]): List[Tree] = {
-      println("makeFinalVirtualClassPart: " + name.toString + " | " + typeDef.toString + " | " + classParents.mkString(" --- "))
+      //println("makeFinalVirtualClassPart: " + name.toString + " | " + typeDef.toString + " | " + classParents.mkString(" --- "))
 
       val fL = List(TypeDef(Modifiers(), name, tparams, typeDef),
         ClassDef(mods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, List(noParameterConstructor))))
