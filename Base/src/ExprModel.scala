@@ -121,7 +121,7 @@ object ExprTest extends App {
 	}
 }
 
-/*@virtualContext class ExprFormatChain extends ExprFormat with ExprModelChain {
+/*@virtualContext class ExprFormatChain extends ExprModelChain with ExprFormat {
   @virtual abstract class Chain {
     def op: String
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"

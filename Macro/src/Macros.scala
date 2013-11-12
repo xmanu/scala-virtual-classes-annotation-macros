@@ -137,6 +137,7 @@ object virtualContext {
         else List()
       }
 
+      // TODO: fix getVolatileFixNameInParents, currently too many fixes get introduced
       val volatileFixesInParents: List[Tree] = {
         val vfnip = getVolatileFixNameInParents(inheritRel.map(newTypeName(_)), enclName)
         if (vfnip.length > 0)
@@ -321,7 +322,7 @@ object virtualContext {
       seenTwiceVirtualClasses.distinct
     }
 
-    //TODO: support mixin-composition
+    //TODO: support mixin-composition recursively
     def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
       body.foreach(b =>
         b match {

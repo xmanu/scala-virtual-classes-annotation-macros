@@ -22,27 +22,27 @@ object ExprTest2 extends App {
 
 @virtualContext class ExprModel2 {
 	@virtual abstract class Expr {
-	  //def something$1: Int
+	  def something$1: Int
 	}
 	
 	@virtual class Constant extends Expr {
 	  var value: Int = 0
-	  //def something$1: Int = 0
+	  def something$1: Int = 0
 	}
 	
 	@virtual abstract class BinExpr extends Expr {
 	  var left: Expr = null
 	  var right: Expr = null
-	  //def something$1: Int = 0
-	  //def something$2: Int
+	  def something$1: Int = 0
+	  def something$2: Int
 	}
 	
 	@virtual class Add extends BinExpr {
-	  //def something$2: Int = 0
+	  def something$2: Int = 0
 	}
 	
 	@virtual class Mult extends BinExpr {
-	  //def something$2: Int = 0
+	  def something$2: Int = 0
 	}
 }
 
