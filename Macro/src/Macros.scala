@@ -19,7 +19,7 @@ object virtualContext {
       "VC_FINAL$" + className
 
     val volatileFixMap: scala.collection.mutable.HashMap[String, String] = new scala.collection.mutable.HashMap()
-
+    
     def noParameterConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
     def noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
@@ -28,7 +28,7 @@ object virtualContext {
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.name.decoded.startsWith("VC_TRAIT$" + parent.toString + "$" + virtualClass.toString))
+      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualTraitName(virtualClass, getNameFromTree(parent))))
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -64,14 +64,14 @@ object virtualContext {
       }
     }
 
-    def getVolatileFixNameInParents(classNames: List[TypeName], enclName: TypeName): List[Name] = {
+    def getVolatileFixNameInParents(classNames: List[TypeName], enclName: TypeName, parent: TypeName): List[Name] = {
       classNames.flatMap(classNameLong =>
         try {
           val parentName = getParentNameFromSub(classNameLong.toString)
           println("parentName: " + parentName)
           if (parentName.toString == enclName.toString)
             Nil
-          else {
+          else if (getNameFromSub(classNameLong.toString) == parent.toString) {
             val className = getNameFromSub(classNameLong.toString)
             val tpt = Ident(newTypeName(parentName))
             val tp = computeType(tpt)
@@ -88,6 +88,8 @@ object virtualContext {
               lst
             } else
               Nil
+          } else {
+            Nil
           }
         } catch {
           case e: Throwable => e.printStackTrace(); Nil
@@ -110,7 +112,7 @@ object virtualContext {
       else
         None
     }
-
+    
     def transformVCBody(body: List[Tree], parents: List[Tree], bodies: List[Tree], name: TypeName, mods: Modifiers, parentName: TypeName, enclName: TypeName, inheritRel: List[String]) = {
       val constructorTransformed = body.map(d => d match {
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
@@ -121,13 +123,14 @@ object virtualContext {
       val volatileFixesIntro: List[Tree] = {
         if (mods.hasFlag(ABSTRACT) && !parentIsVirtualClass(Ident(parentName), name))
           List({
-            //TODO: inherit correct abstract / impl members to fix volatile problem
             val volatileFixName = newTermName(volatileFixMap.get(name.toString).get)
             DefDef(Modifiers(DEFERRED), volatileFixName, List(), List(List()), tq"""Int""", EmptyTree)
           })
         else List()
       }
 
+      //TODO: inherit correct abstract / impl members to fix volatile problem
+      
       val volatileFixes: List[Tree] = {
         if (parents.length > 0 && volatileFixMap.get(parents(0).toString).isDefined && !parentIsVirtualClass(Ident(parentName), name))
           List({
@@ -139,7 +142,7 @@ object virtualContext {
 
       // TODO: fix getVolatileFixNameInParents, currently too many fixes get introduced
       val volatileFixesInParents: List[Tree] = {
-        val vfnip = getVolatileFixNameInParents(inheritRel.map(newTypeName(_)), enclName)
+        val vfnip = getVolatileFixNameInParents(inheritRel.map(newTypeName(_)), enclName, (if (parents.length > 0) getNameFromTree(parents(0)) else ""))
         if (vfnip.length > 0)
           List({
             val volatileFixName = vfnip.head
@@ -151,7 +154,7 @@ object virtualContext {
 
       println("volatileFixesInParents: " + volatileFixesInParents.mkString(" | "))
 
-      constructorTransformed // ++ volatileFixes ++ volatileFixesIntro ++ volatileFixesInParents
+      constructorTransformed ++ volatileFixesIntro ++ volatileFixes ++ volatileFixesInParents
     }
 
     /**

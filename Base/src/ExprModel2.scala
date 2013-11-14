@@ -22,28 +22,34 @@ object ExprTest2 extends App {
 
 @virtualContext class ExprModel2 {
 	@virtual abstract class Expr {
-	  def something$1: Int
+	  //def something$1: Int
 	}
 	
 	@virtual class Constant extends Expr {
 	  var value: Int = 0
-	  def something$1: Int = 0
+	  //def something$1: Int = 0
 	}
 	
 	@virtual abstract class BinExpr extends Expr {
 	  var left: Expr = null
 	  var right: Expr = null
-	  def something$1: Int = 0
-	  def something$2: Int
+	  //def something$1: Int = 0
+	  //def something$2: Int
 	}
 	
 	@virtual class Add extends BinExpr {
-	  def something$2: Int = 0
+	  //def something$2: Int = 0
 	}
 	
 	@virtual class Mult extends BinExpr {
-	  def something$2: Int = 0
+	  //def something$2: Int = 0
 	}
+}
+
+@virtualContext class ExprModelWithSub extends ExprModel2 {
+  @virtual class Sub extends BinExpr {
+    //def something$2: Int = 0
+  }
 }
 
 @virtualContext class ExprEval extends ExprModel2 {
@@ -51,21 +57,27 @@ object ExprTest2 extends App {
 	  def eval: Int
 	}
 	
-	@virtual class Constant extends Expr {
+	@virtual class Constant {
 	  def eval: Int = value
 	}
 	
-	@virtual abstract class BinExpr extends Expr {
+	@virtual abstract class BinExpr {
 	}
 	
-	@virtual class Add extends BinExpr {
+	@virtual class Add {
 	  def eval: Int = left.eval + right.eval
 	}
 	
-	@virtual class Mult extends BinExpr {
+	@virtual class Mult {
 	  def eval: Int = left.eval * right.eval
 	}
 }
+
+/*@virtualContext class ExprEvalWithSub extends ExprEval with ExprModelWithSub {
+  @virtual class Sub {
+    def eval: Int = left.eval - right.eval
+  }
+}*/
 
 @virtualContext class ExprFormat2 extends ExprModel2 {
 	@virtual abstract class Expr {

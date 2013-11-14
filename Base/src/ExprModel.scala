@@ -84,7 +84,7 @@ object ExprTest extends App {
 	}
 }
 
-@virtualContext class ExprModelChain extends ExprModel {
+@virtualContext class ExprModelChain extends ExprModel {  
   @virtual abstract class Chain extends Expr {
     var chain: List[Expr] = null
   }
