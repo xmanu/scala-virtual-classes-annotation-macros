@@ -14,42 +14,33 @@ object ExprTest2 extends App {
   val add3 = epf.Add()
   add3.left = mul2
   add3.right = twelf2
+  val div = epf.Div()
+  div.left = add3
+  div.right = three3
   
-  println(add3.format + " = " + add3.eval)
-  println(add3.formatPre)
-  println(add3.formatPost)
+  println(div.format + " = " + div.eval)
+  println(div.formatPre)
+  println(div.formatPost)
 }
 
 @virtualContext class ExprModel2 {
 	@virtual abstract class Expr {
-	  //def something$1: Int
 	}
 	
 	@virtual class Constant extends Expr {
 	  var value: Int = 0
-	  //def something$1: Int = 0
 	}
 	
 	@virtual abstract class BinExpr extends Expr {
 	  var left: Expr = null
 	  var right: Expr = null
-	  //def something$1: Int = 0
-	  //def something$2: Int
 	}
 	
 	@virtual class Add extends BinExpr {
-	  //def something$2: Int = 0
 	}
 	
 	@virtual class Mult extends BinExpr {
-	  //def something$2: Int = 0
 	}
-}
-
-@virtualContext class ExprModelWithSub extends ExprModel2 {
-  @virtual class Sub extends BinExpr {
-    //def something$2: Int = 0
-  }
 }
 
 @virtualContext class ExprEval extends ExprModel2 {
@@ -72,12 +63,6 @@ object ExprTest2 extends App {
 	  def eval: Int = left.eval * right.eval
 	}
 }
-
-/*@virtualContext class ExprEvalWithSub extends ExprEval with ExprModelWithSub {
-  @virtual class Sub {
-    def eval: Int = left.eval - right.eval
-  }
-}*/
 
 @virtualContext class ExprFormat2 extends ExprModel2 {
 	@virtual abstract class Expr {
@@ -132,5 +117,15 @@ object ExprTest2 extends App {
 }
 
 @virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormat2 with ExprFormatPrePost2 {
+  @virtual class Div extends BinExpr {
+    def op = "/"
+    def op2 = "/"
+    def eval = left.eval / right.eval
+  }
   
+  @virtual class Sub extends BinExpr {
+    def op = "-"
+    def op2 = "-"
+    def eval = left.eval - right.eval
+  }
 }
