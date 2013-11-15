@@ -18,7 +18,7 @@ Syntax:
 Example:
 --------
 
-```
+```scala
 @virtualContext class ExprModel {
 	@virtual abstract class Expr {
 	}
