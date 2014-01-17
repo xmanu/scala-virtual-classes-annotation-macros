@@ -1,5 +1,5 @@
-object ExprTest extends App {
-  val em = ExprModelChain()
+object ExprTest1 extends App {
+  val em = ExprModelChain1()
   val two = em.Constant()
   two.value = 2
   val three = em.Constant()
@@ -11,7 +11,7 @@ object ExprTest extends App {
   plus.right = chain
   println(plus.eval)
   
-  val ef = ExprFormatExtended()
+  val ef = ExprFormatExtended1()
   val three2 = ef.Constant()
   three2.value = 3
   val five = ef.Constant()
@@ -39,7 +39,7 @@ object ExprTest extends App {
   
   println(div.format + " = " + div.eval)
   
-  val epf = ExprFormatWithPrePost()
+  val epf = ExprFormatWithPrePost1()
   val three3 = epf.Constant()
   three3.value = 3
   val five2 = epf.Constant()
@@ -60,7 +60,7 @@ object ExprTest extends App {
   println(add3.formatPost)
 }
 
-@virtualContext class ExprModel {
+@virtualContext class ExprModel1 {
 	@virtual abstract class Expr {
 	  def eval: Int
 	}
@@ -84,7 +84,7 @@ object ExprTest extends App {
 	}
 }
 
-@virtualContext class ExprModelChain extends ExprModel {  
+@virtualContext class ExprModelChain1 extends ExprModel1 {  
   @virtual abstract class Chain extends Expr {
     var chain: List[Expr] = null
   }
@@ -98,7 +98,7 @@ object ExprTest extends App {
   }
 }
 
-@virtualContext class ExprFormat extends ExprModel {
+@virtualContext class ExprFormat1 extends ExprModel1 {
 	@virtual abstract class Expr {
 	  def format: String
 	}
@@ -121,9 +121,10 @@ object ExprTest extends App {
 	}
 }
 
-/*@virtualContext class ExprFormatChain extends ExprModelChain with ExprFormat {
+/*@virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
   @virtual abstract class Chain {
     def op: String
+    var chain: List[Expr] = null
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"
   }
   
@@ -136,7 +137,7 @@ object ExprTest extends App {
   }
 }*/
 
-@virtualContext class ExprFormatExtended extends ExprFormat {
+@virtualContext class ExprFormatExtended1 extends ExprFormat1 {
   @virtual class Sub extends BinExpr {
     def op: String = "-"
     def eval: Int = left.eval - right.eval
@@ -152,7 +153,7 @@ object ExprTest extends App {
   }
 }
 
-@virtualContext class ExprFormatPrePost extends ExprModel {
+@virtualContext class ExprFormatPrePost1 extends ExprModel1 {
   @virtual abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -177,12 +178,12 @@ object ExprTest extends App {
   }
 }
 
-@virtualContext class ExprPrefixFormat extends ExprFormat {
+@virtualContext class ExprPrefixFormat1 extends ExprFormat1 {
   @virtual abstract class BinExpr {
     override def format: String = "(" + op + " " + left.format + " " + right.format + ")"
   }
 }
 
-@virtualContext class ExprFormatWithPrePost extends ExprFormat with ExprFormatPrePost {
+@virtualContext class ExprFormatWithPrePost1 extends ExprFormat1 with ExprFormatPrePost1 {
   
 }

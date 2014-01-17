@@ -368,35 +368,38 @@ object virtualContext {
       result
     }
 
-    def membersOf(cls: TypeName, bodies: List[Tree]): List[String] = {
+    def membersOf(cls: TypeName, bodies: List[Tree], noAbstract: Boolean = false): List[String] = {
       println("membersOf: " + cls)
       bodies.flatMap(
         t => t match {
           case cd @ ClassDef(mods, name, tparams, Template(parents, valDef, body)) if (isVirtualClass(mods) && name == cls) =>
             println(name + " " + body)
             body.flatMap(b => b match {
-              case dd @ DefDef(mods, defName, tparams, vparamss, tpt, rhs) if (defName != nme.CONSTRUCTOR) => List(defName.toString)
+              case dd @ DefDef(mods, defName, tparams, vparamss, tpt, rhs) if (defName != nme.CONSTRUCTOR && (!noAbstract || !mods.hasFlag(DEFERRED))) => {
+                println(mods)
+                List(defName.toString)
+              }
               case _ => List()
             })
           case _ => List()
         })
     }
 
-    def nameClashesForVCClass(vc: TypeName, classParents: List[Tree], enclName: String, bodies: List[Tree]): List[String] = {
+    def nameClashesForVCClass(vc: TypeName, classParents: List[Tree], enclName: TypeName, bodies: List[Tree]): List[(String, TypeName)] = {
       println("nameClashesForVCClass: " + vc + ": " + classParents.mkString(" "))
-      val members = membersOf(vc, bodies)
+      val members = membersOf(vc, bodies, true)
       println("nameClashesForVCClass members: " + members)
-      var result = List[String]()
+      var result = List[(String, TypeName)]()
       classParents.foreach {
         p =>
           val parent = getParentNameFromSub(getNameFromTree(p))
-          if (parent != enclName) {
+          if (parent != enclName.toString) {
             membersInVCTrait(p)
           } else {
-            membersOf(getNameFromSub(getNameFromTree(p)), bodies)
+            membersOf(getNameFromSub(getNameFromTree(p)), bodies, true)
           }.foreach { m =>
-          	if (members.contains(m) && !result.contains(m))
-          	  result = m :: result
+            if (members.contains(m) && !result.exists { case (memb, cls) => memb == m })
+              result = (m, newTypeName(virtualTraitName(vc, enclName))) :: result
           }
       }
       result
@@ -457,11 +460,11 @@ object virtualContext {
       bodyTransform ++ mixinTransform
     }
 
-    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], nameClashes: List[String]): List[Tree] = {
+    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], nameClashes: List[(String, TypeName)]): List[Tree] = {
       //println("makeFinalVirtualClassPart: " + name.toString + " | " + typeDef.toString + " | " + classParents.mkString(" --- "))
       //DefDef(Modifiers(), newTermName("test"), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), newTypeName("AnyRef")), newTermName("test")))))
 
-      val clashOverrides = nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), newTypeName(virtualTraitName(name, enclName))), newTermName(s))))
+      val clashOverrides = nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       println("clashOverrides: " + clashOverrides.mkString(" ------- "))
 
@@ -515,7 +518,7 @@ object virtualContext {
 
             //val nc = nameClashes(classParents, enclName.toString, body)
 
-            val nc = nameClashesForVCClass(name, classParents, enclName.toString, body)
+            val nc = nameClashesForVCClass(name, classParents, enclName, body)
 
             println("nameClashes: " + nc.mkString(" "))
 
@@ -542,8 +545,8 @@ object virtualContext {
           Modifiers(ABSTRACT)
 
         //val nc = nameClashes(parents, enclName.toString, body)
-          
-        val nc = nameClashesForVCClass(name, parents, enclName.toString, body) 
+
+        val nc = nameClashesForVCClass(name, parents, enclName, body)
         makeFinalVirtualClassPart(name, enclName, mods, typeInner, List(), (inheritance ++ missing).map(s => Ident(newTypeName(s))), nc)
       }
 
