@@ -1,4 +1,4 @@
-object ExprTest2 extends App { 
+object ExprModelTest2 extends App { 
   val epf = ExprEvalWithFormat()
   val three3 = epf.Constant()
   three3.value = 3
@@ -23,7 +23,7 @@ object ExprTest2 extends App {
   println(div.formatPost)
 }
 
-@virtualContext class ExprModel2 {
+@virtualContext class ExprModel {
 	@virtual abstract class Expr {
 	}
 	
@@ -43,89 +43,78 @@ object ExprTest2 extends App {
 	}
 }
 
-@virtualContext class ExprEval extends ExprModel2 {
-	@virtual abstract class Expr {
+@virtualContext class ExprEval extends ExprModel {
+	@virtualOverride abstract class Expr {
 	  def eval: Int
 	}
 	
-	@virtual class Constant {
+	@virtualOverride class Constant {
 	  def eval: Int = value
 	}
 	
-	@virtual abstract class BinExpr {
+	@virtualOverride abstract class BinExpr {
 	}
 	
-	@virtual class Add {
+	@virtualOverride class Add {
 	  def eval: Int = left.eval + right.eval
 	}
 	
-	@virtual class Mult {
+	@virtualOverride class Mult {
 	  def eval: Int = left.eval * right.eval
 	}
 }
 
-@virtualContext class ExprFormat2 extends ExprModel2 {
-	@virtual abstract class Expr {
+@virtualContext class ExprModelOp extends ExprModel {
+  @virtualOverride abstract class BinExpr {
+    def op: String
+  }
+  @virtualOverride class Add {
+    def op = "+"
+  }
+  @virtualOverride class Mult {
+    def op = "*"
+  }
+}
+
+@virtualContext class ExprFormat extends ExprModelOp {
+	@virtualOverride abstract class Expr {
 	  def format: String
 	}
 	
-	@virtual class Constant {
+	@virtualOverride class Constant {
 	  def format: String = value.toString
 	}
 	
-	@virtual abstract class BinExpr {
-	  def op: String
+	@virtualOverride abstract class BinExpr {
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
-	}
-	
-	@virtual class Add {
-	  def op: String = "+"
-	}
-	
-	@virtual class Mult {
-	  def op: String = "*"
 	}
 }
 
-@virtualContext class ExprFormatPrePost2 extends ExprModel2 {
-  @virtual abstract class Expr {
+@virtualContext class ExprFormatPrePost extends ExprFormat {
+  @virtualOverride abstract class Expr {
     def formatPre: String
     def formatPost: String
   }
   
-  @virtual class Constant {
+  @virtualOverride class Constant {
     def formatPre = value.toString
     def formatPost = value.toString
   }
   
-  @virtual abstract class BinExpr {
-    def op2: String
-    def formatPre: String = "(" + op2 + " " + left.formatPre + " " + right.formatPre + ")"
-    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op2
-  }
-  
-  @virtual class Add {
-    def op2 = "+"
-  }
-  @virtual class Mult {
-    def op2 = "*"
+  @virtualOverride abstract class BinExpr {
+    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
+    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
   }
 }
 
-@virtualContext class ExprFormatWithPrePost2 extends ExprFormat2 with ExprFormatPrePost2 {
-  
-}
-
-@virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormat2 with ExprFormatPrePost2 {
+@virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
   @virtual class Div extends BinExpr {
     def op = "/"
-    def op2 = "/"
     def eval = left.eval / right.eval
   }
   
   @virtual class Sub extends BinExpr {
     def op = "-"
-    def op2 = "-"
     def eval = left.eval - right.eval
   }
 }
