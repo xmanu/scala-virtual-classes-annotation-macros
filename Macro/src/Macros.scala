@@ -9,6 +9,12 @@ object virtualContext {
     import c.universe._
     import Flag._
 
+    implicit class SymbolHelper(s: c.universe.Symbol) {
+      def isDeferred: Boolean = {
+        s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].hasFlag(scala.reflect.internal.Flags.DEFERRED)
+      }
+    }
+
     def virtualTraitName(className: TypeName, enclClassName: TypeName) =
       "VC_TRAIT$" + enclClassName + "$" + className
     def factoryName(className: TypeName) =
@@ -339,7 +345,7 @@ object virtualContext {
         .filter(s => s.isClass && s.name == traitName)
         .flatMap(s =>
           s.asClass.toType.declarations
-            .filter(s => s.isMethod && !s.asMethod.isConstructor)
+            .filter(s => s.isMethod && !s.asMethod.isConstructor && !s.isDeferred)
             .map(_.name.toString)
             .filter(s => !s.endsWith("_$eq") && !s.startsWith("volatileFix$")))
         .map(_.trim).distinct
