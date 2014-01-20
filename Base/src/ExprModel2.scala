@@ -64,7 +64,7 @@ object ExprModelTest2 extends App {
 	}
 }
 
-@virtualContext class ExprModelOp extends ExprModel {
+/*@virtualContext class ExprModelOp extends ExprModel {
   @virtualOverride abstract class BinExpr {
     def op: String
   }
@@ -74,9 +74,9 @@ object ExprModelTest2 extends App {
   @virtualOverride class Mult {
     def op = "*"
   }
-}
+}*/
 
-@virtualContext class ExprFormat extends ExprModelOp {
+@virtualContext class ExprFormat extends ExprModel {
 	@virtualOverride abstract class Expr {
 	  def format: String
 	}
@@ -87,6 +87,15 @@ object ExprModelTest2 extends App {
 	
 	@virtualOverride abstract class BinExpr {
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
+	  def op: String
+	}
+	
+	@virtualOverride class Add {
+	  def op = "+"
+	}
+	
+	@virtualOverride class Mult {
+	  def op = "*"
 	}
 }
 

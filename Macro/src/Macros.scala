@@ -377,7 +377,7 @@ object virtualContext {
     }*/
 
     def membersOf(cls: TypeName, bodies: List[Tree], noAbstract: Boolean = false): List[String] = {
-      println("membersOf: " + cls)
+      //println("membersOf: " + cls)
       bodies.flatMap(
         t => t match {
           case cd @ ClassDef(mods, name, tparams, Template(parents, valDef, body)) if (isVirtualClass(mods) && name == cls) =>
@@ -394,25 +394,25 @@ object virtualContext {
     }
 
     def nameClashesForVCClass(vc: TypeName, classParents: List[Tree], enclName: TypeName, bodies: List[Tree]): Map[String, TypeName] = {
-      println("nameClashesForVCClass: " + vc + ": " + classParents.mkString(" "))
+      //println("nameClashesForVCClass: " + vc + ": " + classParents.mkString(" "))
       var result = Map[String, TypeName]()
       var seen = List[String]()
-      println("name:" + vc)
-      println("enclName: " + enclName)
+      //println("name:" + vc)
+      //println("enclName: " + enclName)
 
       val classes = (virtualTraitName(vc, enclName) :: classParents.map(getNameFromTree(_))).reverse.distinct
-      println("classParents: " + classes.mkString(" "))
+      //println("classParents: " + classes.mkString(" "))
 
       classes.foreach {
         p =>
-          println("handling " + p)
+          //println("handling " + p)
           val p_parent = getParentNameFromSub(p)
           val members_in_p = if (p_parent != enclName.toString) {
             declsInVCTrait(p)
           } else {
             membersOf(getNameFromSub(p), bodies, true)
           }
-          println("members in p: " + members_in_p.mkString(" "))
+          //println("members in p: " + members_in_p.mkString(" "))
           members_in_p.foreach { m =>
             if (!seen.contains(m))
               seen ::= m
@@ -490,7 +490,7 @@ object virtualContext {
 
       val clashOverrides = nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
-      println("clashOverrides: " + clashOverrides.mkString(" ------- "))
+      //println("clashOverrides: " + clashOverrides.mkString(" ------- "))
 
       val fL = List(TypeDef(Modifiers(), name, tparams, typeDef),
         ClassDef(mods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, List(noParameterConstructor) ++ clashOverrides)))
@@ -542,7 +542,7 @@ object virtualContext {
 
             val nc = nameClashesForVCClass(name, classParents, enclName, body)
 
-            println("nameClashes: " + nc.mkString(" "))
+            //println("nameClashes: " + nc.mkString(" "))
 
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc)
 
