@@ -38,7 +38,7 @@ object virtualContext {
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualTraitName(virtualClass, getNameFromTree(parent))))
+      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualClass.toString))
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -78,23 +78,15 @@ object virtualContext {
       classNames.flatMap(classNameLong =>
         try {
           val parentName = getParentNameFromSub(classNameLong.toString)
-          //println("parentName: " + parentName)
           if (parentName.toString == enclName.toString)
             Nil
           else if (getNameFromSub(classNameLong.toString) == parent.toString) {
             val className = getNameFromSub(classNameLong.toString)
             val tpt = Ident(newTypeName(parentName))
             val tp = computeType(tpt)
-            //println("getVolatileFixNameInParents: " + tp + " | " + virtualTraitName(className, parentName))
-            //println(tp.declarations.mkString(" "))
             val traitTp = tp.declaration(newTypeName(virtualTraitName(className, parentName)))
-            //println(traitTp)
             if (tp != NoType && traitTp != NoSymbol) {
-              //List(newTypeName(virtualTraitName(className, parentName)))
-              //println(traitTp.typeSignature)
-              //println(traitTp.typeSignature.declarations.mkString(";"))
               val lst = traitTp.typeSignature.declarations.filter(d => d.name.toString.startsWith("volatileFix$")).map(_.name).toList
-              //println(lst.mkString(" | "))
               lst
             } else
               Nil
@@ -106,23 +98,6 @@ object virtualContext {
         })
     }
 
-    def getVolatileFixName(parentName: TypeName, familyBody: List[Tree], enclName: TypeName) = {
-      //println("getVolatileFixName: " + parentName.toString + "; " + enclName.toString + "; " + familyBody.mkString("|"))
-      val possibleNames: List[Name] = familyBody.flatMap(b => b match {
-        case ClassDef(mods, name, tparams, Template(parents, self, body)) if (name.toString == parentName.toString) =>
-          //println("found some class")
-          List(newTermName("volatileFix$" + name))
-        case _ => List()
-      }) //++ getVolatileFixNameInParents(parentName, enclName)
-
-      //println(possibleNames.mkString(" "))
-
-      if (possibleNames.length > 0)
-        Some(possibleNames(0))
-      else
-        None
-    }
-
     def transformVCBody(body: List[Tree], parents: List[Tree], bodies: List[Tree], name: TypeName, mods: Modifiers, parentName: TypeName, enclName: TypeName, inheritRel: List[String]) = {
       val constructorTransformed = body.map(d => d match {
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
@@ -131,6 +106,7 @@ object virtualContext {
       })
 
       val volatileFixesIntro: List[Tree] = {
+        println("parentIsVirtualClass: " + parentName + ", " + name + ": " + parentIsVirtualClass(Ident(parentName), name))
         if (mods.hasFlag(ABSTRACT) && !parentIsVirtualClass(Ident(parentName), name))
           List({
             val volatileFixName = newTermName(volatileFixMap.get(name.toString).get)
@@ -198,7 +174,11 @@ object virtualContext {
     }
 
     def getInheritanceRelation(bodies: List[c.universe.Tree], vc_parents: List[Tree], name: TypeName, parents: List[Tree], enclName: TypeName): List[String] = {
-
+    
+      println("getInheritanceRelation: " + enclName + "." + name)
+      println("vc_parents: " + vc_parents.mkString(" "))
+      println("parents: " + parents.mkString(" "))
+      
       // family inheritance
       val family = if (!vc_parents.isEmpty)
         List(virtualTraitName(name, enclName))
@@ -220,15 +200,29 @@ object virtualContext {
 
       //println("parentsString: " + vc_parents.mkString(" "))
 
+      println("ownInheritance: " + ownInheritance.mkString(" "))
+      println("parentInheritance: " + parentInheritance.mkString(" "))
+      println("family: " + family.mkString(" "))
       val all = (ownInheritance ++ parentInheritance ++ family).distinct // TODO: What is right linearization
-
+      println("all: " + all.mkString(" "))
       val res = if (all.length >= 2 && getNameFromSub(all.tail.head) != name.toString)
         getNameFromSub(all.tail.head) :: all.head :: all.tail.tail
+        //all.head :: stripVCInList(all.tail, name.toString)
       else
         all
 
       res
     }
+    
+    def stripVCInList(lst: List[String], name: String): List[String] = {
+      val p = lst.filter(getNameFromSub(_) != name).head
+      val (l,r) = lst.splitAt(lst.indexWhere(getNameFromSub(_) != name)+1)
+      if (r.isEmpty)
+        p :: l ++ r
+      else
+      	p :: l ++ r.tail
+    }
+    
 
     /*def getInheritanceTreeComplete(bodies: List[c.universe.Tree], className: TypeName, enclName: TypeName, parent: TypeName): List[String] = {
       val res = bodies.flatMap(b => b match {
