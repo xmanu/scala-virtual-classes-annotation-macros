@@ -121,10 +121,9 @@ object ExprTest1 extends App {
 	}
 }
 
-/*@virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
+@virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
   @virtual abstract class Chain {
     def op: String
-    var chain: List[Expr] = null
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"
   }
   
@@ -135,7 +134,7 @@ object ExprTest1 extends App {
   @virtual class MultChain {
     def op = "*"
   }
-}*/
+}
 
 @virtualContext class ExprFormatExtended1 extends ExprFormat1 {
   @virtual class Sub extends BinExpr {
