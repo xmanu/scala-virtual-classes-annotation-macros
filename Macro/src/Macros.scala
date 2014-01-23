@@ -40,7 +40,7 @@ object virtualContext {
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.name.decoded.startsWith("VC_TRAIT$" + getNameFromTree(parent) + "$" + virtualClass.toString))
+      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualClass.toString) && s.isType)
     }
 
     def isVC(name: TypeName)(implicit vcc: VCContext) = {
