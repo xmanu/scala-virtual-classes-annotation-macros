@@ -13,7 +13,6 @@ object ExprModelTest2 extends App {
 	}
 	
 	@virtual class Constant(val value: Int) extends Expr {
-	  //var value: Int = 0
 	}
 	
 	@virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr {
@@ -31,30 +30,30 @@ object ExprModelTest2 extends App {
 	  def eval: Int
 	}
 	
-	@virtualOverride class Constant(val value: Int) {
+	@virtualOverride class Constant {
 	  def eval: Int = value
 	}
 	
-	@virtualOverride abstract class BinExpr(val left: Expr, val right: Expr) {
+	@virtualOverride abstract class BinExpr {
 	}
 	
-	@virtualOverride class Add(val left: Expr, val right: Expr) {
+	@virtualOverride class Add {
 	  def eval: Int = left.eval + right.eval
 	}
 	
-	@virtualOverride class Mult(val left: Expr, val right: Expr) {
+	@virtualOverride class Mult {
 	  def eval: Int = left.eval * right.eval
 	}
 }
 
 @virtualContext class ExprModelOp extends ExprModel {
-  @virtualOverride abstract class BinExpr(val left: Expr, val right: Expr) {
+  @virtualOverride abstract class BinExpr {
     def op: String
   }
-  @virtualOverride class Add(val left: Expr, val right: Expr) {
+  @virtualOverride class Add {
     def op = "+"
   }
-  @virtualOverride class Mult(val left: Expr, val right: Expr) {
+  @virtualOverride class Mult {
     def op = "*"
   }
 }
@@ -64,20 +63,20 @@ object ExprModelTest2 extends App {
 	  def format: String
 	}
 	
-	@virtualOverride class Constant(val value: Int) {
+	@virtualOverride class Constant {
 	  def format: String = value.toString
 	}
 	
-	@virtualOverride abstract class BinExpr(val left: Expr, val right: Expr) {
+	@virtualOverride abstract class BinExpr {
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
 	  //def op: String
 	}
 	
-	@virtualOverride class Add(val left: Expr, val right: Expr) {
+	@virtualOverride class Add {
 	  //def op = "+"
 	}
 	
-	@virtualOverride class Mult(val left: Expr, val right: Expr) {
+	@virtualOverride class Mult {
 	  //def op = "*"
 	}
 }
@@ -88,12 +87,12 @@ object ExprModelTest2 extends App {
     def formatPost: String
   }
   
-  @virtualOverride class Constant(val value: Int) {
+  @virtualOverride class Constant {
     def formatPre = value.toString
     def formatPost = value.toString
   }
   
-  @virtualOverride abstract class BinExpr(val left: Expr, val right: Expr) {
+  @virtualOverride abstract class BinExpr {
     def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
     def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
   }

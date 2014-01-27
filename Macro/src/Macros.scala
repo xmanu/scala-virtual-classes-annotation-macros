@@ -405,9 +405,12 @@ object virtualContext {
             if (!isOverridenVirtualClass(mods) && parents.exists(t => parentIsVirtualClass(t, name)))
               c.error(cd.pos, s"The following parents of the class family already declare a class with the name $name: " + parents.filter(t => parentIsVirtualClass(t, name)).mkString(", ") + "\nTo override functionality, declare the virtual class @virtualOverride.")
 
-            //TODO: support constructor parameters
-
             val Template(vc_parents, _, vc_body) = impl
+            
+            
+            if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty)
+              c.error(cd.pos, "Overriden virtual classes cannot define constructor parameters.")
+              
 
             val inheritRel = getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
             val classInner = getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
@@ -416,7 +419,10 @@ object virtualContext {
 
             val classTmpl = convertToTraitConstructor(impl, name, tparams, body, mods, parents.map(p => newTypeName(getNameFromTree(p))), enclName, classInner)
 
-            val constructorParameters = getConstructorParameters(vc_body)
+            val constructorParameters = if (!isOverridenVirtualClass(mods)) 
+              getConstructorParameters(vc_body)
+            else
+              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
 
             val vparamss = List(
               constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
@@ -507,7 +513,12 @@ object virtualContext {
 
             val nc = nameClashesForVCClass(name, classParents, enclName, body)
 
-            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc, getConstructorParameters(vc_body))
+            val constructorParameters = if (!isOverridenVirtualClass(mods)) 
+              getConstructorParameters(vc_body)
+            else
+              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
+            
+            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc, constructorParameters)
 
           case _ => Nil
         })
