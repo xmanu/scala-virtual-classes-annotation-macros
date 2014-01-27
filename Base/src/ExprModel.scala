@@ -99,39 +99,39 @@ object ExprTest1 extends App {
 }
 
 @virtualContext class ExprFormat1 extends ExprModel1 {
-	@virtual abstract class Expr {
+	@virtualOverride abstract class Expr {
 	  def format: String
 	}
 	
-	@virtual class Constant {
+	@virtualOverride class Constant {
 	  def format: String = value.toString
 	}
 	
-	@virtual abstract class BinExpr {
+	@virtualOverride abstract class BinExpr {
 	  def op: String
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
 	}
 	
-	@virtual class Add {
+	@virtualOverride class Add {
 	  def op: String = "+"
 	}
 	
-	@virtual class Mult {
+	@virtualOverride class Mult {
 	  def op: String = "*"
 	}
 }
 
 @virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
-  @virtual abstract class Chain {
+  @virtualOverride abstract class Chain {
     def op: String
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"
   }
   
-  @virtual class AddChain {
+  @virtualOverride class AddChain {
     def op = "+"
   }
   
-  @virtual class MultChain {
+  @virtualOverride class MultChain {
     def op = "*"
   }
 }
@@ -153,32 +153,32 @@ object ExprTest1 extends App {
 }
 
 @virtualContext class ExprFormatPrePost1 extends ExprModel1 {
-  @virtual abstract class Expr {
+  @virtualOverride abstract class Expr {
     def formatPre: String
     def formatPost: String
   }
   
-  @virtual class Constant {
+  @virtualOverride class Constant {
     def formatPre = value.toString
     def formatPost = value.toString
   }
   
-  @virtual abstract class BinExpr {
+  @virtualOverride abstract class BinExpr {
     def op2: String
     def formatPre: String = "(" + op2 + " " + left.formatPre + " " + right.formatPre + ")"
     def formatPost: String = left.formatPost + " " + right.formatPost + " " + op2
   }
   
-  @virtual class Add {
+  @virtualOverride class Add {
     def op2 = "+"
   }
-  @virtual class Mult {
+  @virtualOverride class Mult {
     def op2 = "*"
   }
 }
 
 @virtualContext class ExprPrefixFormat1 extends ExprFormat1 {
-  @virtual abstract class BinExpr {
+  @virtualOverride abstract class BinExpr {
     override def format: String = "(" + op + " " + left.format + " " + right.format + ")"
   }
 }
