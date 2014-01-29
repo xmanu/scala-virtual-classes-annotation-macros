@@ -384,7 +384,7 @@ object virtualContext {
 
       body.foreach(b =>
         b match {
-          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
+          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods) && mods.hasFlag(ABSTRACT)) =>
             volatileFixMap.put(name.toString, c.fresh("volatileFix$"))
           case _ => ;
         })
