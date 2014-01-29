@@ -135,7 +135,7 @@ object virtualContext {
             // we haven't defined this parent in this context so just find the right mixins in the fix class in our virtualContext's parents...
             List()
         }) ++ vcc.parents.flatMap(getClassMixinsInParent(n, _))
-      } ++ currentPart(name)).distinct
+      } ++ currentPart(name)).distinct.reverse
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -215,10 +215,10 @@ object virtualContext {
     /**
      * we converted the class to a trait so change the constructor from <init> to $init$ and remove the super call...
      */
-    def convertToTraitConstructor(templ: c.universe.Template, name: TypeName, tparams: List[TypeDef], bodies: List[Tree], mods: Modifiers, parents: List[TypeName], enclName: TypeName, inheritRel: List[String]): c.universe.Template = {
+    def convertToTraitConstructor(templ: c.universe.Template, name: TypeName, tparams: List[TypeDef], bodies: List[Tree], mods: Modifiers, parents: List[TypeName], enclName: TypeName, classInner: List[String]): c.universe.Template = {
       templ match {
         case Template(vc_parents, self, body) =>
-          Template(List(tq"""scala.AnyRef"""), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, bodies), EmptyTree), transformVCBody(body, vc_parents, bodies, name, mods, parents, enclName, inheritRel))
+          Template(classInner.filter(s => s != virtualTraitName(getNameFromSub(s), enclName)).map(s => Ident(newTypeName(s))), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, bodies), EmptyTree), transformVCBody(body, vc_parents, bodies, name, mods, parents, enclName, classInner))
       }
     }
 

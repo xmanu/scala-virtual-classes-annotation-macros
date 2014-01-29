@@ -8,11 +8,12 @@ object ExprModelTest2 extends App {
   println(div.formatPost)
 }
 
-@virtualContext class ExprModel {
+@virtualContext class ExprModel {  
 	@virtual abstract class Expr {
 	}
 	
-	@virtual class Constant(val value: Int) extends Expr {
+	@virtual class Constant(_value: Int) extends Expr {
+	  var value: Int = _value
 	}
 	
 	@virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr {
