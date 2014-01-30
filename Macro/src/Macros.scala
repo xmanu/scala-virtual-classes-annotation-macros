@@ -50,11 +50,15 @@ object virtualContext {
       computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualClass.toString) && s.isType)
     }
 
-    def isVC(name: TypeName)(implicit vcc: VCContext) = {
+    def isVCInBodies(name: TypeName)(implicit vcc: VCContext) = {
       vcc.bodies.exists(b => b match {
-        case ClassDef(mods, _, _, _) => isVirtualClass(mods) || isOverridenVirtualClass(mods)
+        case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
         case _ => false
-      }) || vcc.parents.exists(p => parentIsVirtualClass(Ident(p), name))
+      }) 
+    }
+    
+    def isVC(name: TypeName)(implicit vcc: VCContext) = {
+      isVCInBodies(name)(vcc) || vcc.parents.exists(p => parentIsVirtualClass(Ident(p), name))
     }
 
     def findInBodies(name: TypeName)(implicit vcc: VCContext) = {
@@ -135,7 +139,12 @@ object virtualContext {
             // we haven't defined this parent in this context so just find the right mixins in the fix class in our virtualContext's parents...
             List()
         }) ++ vcc.parents.flatMap(getClassMixinsInParent(n, _))
-      } ++ currentPart(name)).distinct.reverse
+      } ++ currentPart(name)).distinct.reverse.flatMap { n =>
+        // check if we missed some traits which may have been overriden in the own family...
+        if (isVCInBodies(getNameFromSub(n.toString)))
+          List(newTypeName(virtualTraitName(getNameFromSub(n.toString), vcc.enclName)), n)
+        else List(n)
+      }.distinct
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
