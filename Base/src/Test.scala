@@ -1,3 +1,5 @@
+import VirtualClasses._
+
 object Test extends App {
   val tc = TestClass2()
   val t: tc.Test = tc.Test()

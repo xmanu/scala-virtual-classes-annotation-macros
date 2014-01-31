@@ -1,3 +1,5 @@
+import VirtualClasses._
+
 object ExprTest1 extends App {
   val em = ExprModelChain1()
   val two = em.Constant(2)

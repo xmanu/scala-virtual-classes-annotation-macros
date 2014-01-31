@@ -1,3 +1,5 @@
+package VirtualClasses
+
 import scala.reflect.macros.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
@@ -227,7 +229,7 @@ object virtualContext {
     def convertToTraitConstructor(templ: c.universe.Template, name: TypeName, tparams: List[TypeDef], bodies: List[Tree], mods: Modifiers, parents: List[TypeName], enclName: TypeName, classInner: List[String]): c.universe.Template = {
       templ match {
         case Template(vc_parents, self, body) =>
-          Template(classInner.filter(s => s != virtualTraitName(getNameFromSub(s), enclName)).map(s => Ident(newTypeName(s))), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, bodies), EmptyTree), transformVCBody(body, vc_parents, bodies, name, mods, parents, enclName, classInner))
+          Template(classInner.filter(s => s != virtualTraitName(name, enclName)).map(s => Ident(newTypeName(s))), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, bodies), EmptyTree), transformVCBody(body, vc_parents, bodies, name, mods, parents, enclName, classInner))
       }
     }
 
@@ -436,7 +438,7 @@ object virtualContext {
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, classTmpl))
-            if (parentIsVirtualClass(parents(0), name) || (mods.hasFlag(ABSTRACT)))
+            if (parents.exists(p => parentIsVirtualClass(p, name)) || (mods.hasFlag(ABSTRACT)))
               b
             else
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, 
@@ -465,7 +467,7 @@ object virtualContext {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
-      val clashOverrides = nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
+      val clashOverrides = List()//nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       val fcn = newTypeName(fixClassName(name, enclName))
       

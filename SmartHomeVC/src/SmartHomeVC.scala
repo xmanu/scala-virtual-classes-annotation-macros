@@ -1,3 +1,5 @@
+import VirtualClasses._
+
 @virtualContext class Building {
   @virtual abstract class Location {
     

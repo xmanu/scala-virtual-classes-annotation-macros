@@ -1,3 +1,5 @@
+import VirtualClasses._
+
 object ExprModelTest2 extends App { 
   val epf = ExprEvalWithFormat()
 
