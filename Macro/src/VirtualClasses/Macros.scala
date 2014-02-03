@@ -105,7 +105,7 @@ object virtualContext {
 
     def currentPart(name: TypeName)(implicit vcc: VCContext) = {
       getTraitParentsInParents(name) ++
-        (if (findInBodies(name).isDefined)
+        (if (findInBodies(name).isDefined && isVC(name))
           List(newTypeName(virtualTraitName(name, vcc.enclName)))
         else
           List())
@@ -512,10 +512,11 @@ object virtualContext {
             val classInner = getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString) //getInheritanceTreeComplete(body, name, enclName, parents)
 
             val classAdditions = classInner.flatMap(p => if (!classInner.contains(virtualTraitName(getNameFromSub(p.toString), enclName)) &&
-              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)))
+              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)) && isVC(p))
               List(virtualTraitName(getNameFromSub(p.toString), enclName))
             else
               List())
+            println("classAdditions: " + classAdditions.mkString(" "))
 
             val classParents = mapInheritanceRelation((classInner ++ classAdditions).distinct, body)
 

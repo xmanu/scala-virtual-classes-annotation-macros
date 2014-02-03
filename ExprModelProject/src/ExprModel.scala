@@ -8,10 +8,16 @@ object ExprModelTest2 extends App {
   println(div.format + " = " + div.eval)
   println(div.formatPre)
   println(div.formatPost)
+  println(div.testMethod)
+  println(div.asInstanceOf[epf.Test].testMethod)
 }
 
-@virtualContext class ExprModel {  
-	@virtual abstract class Expr {
+@virtualContext class ExprModel { 
+    trait Test {
+      def testMethod = "test"
+    }
+  
+	@virtual abstract class Expr extends Test {
 	}
 	
 	@virtual class Constant(_value: Int) extends Expr {
