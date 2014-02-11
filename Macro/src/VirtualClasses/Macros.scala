@@ -39,7 +39,7 @@ object virtualContext {
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
       DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
     }
-    
+
     def isVirtualClass(mods: c.universe.Modifiers) = {
       mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()" || a.toString == "new virtualOverride()"))
     }
@@ -56,9 +56,9 @@ object virtualContext {
       vcc.bodies.exists(b => b match {
         case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
         case _ => false
-      }) 
+      })
     }
-    
+
     def isVC(name: TypeName)(implicit vcc: VCContext) = {
       isVCInBodies(name)(vcc) || vcc.parents.exists(p => parentIsVirtualClass(Ident(p), name))
     }
@@ -71,7 +71,9 @@ object virtualContext {
     }
 
     def getParentsInParent(parent: TypeName, name: TypeName) = {
-      val hi = computeType(Ident(parent)).member(name).typeSignature.asInstanceOf[scala.reflect.internal.Types#Type].bounds.hi
+      val tpe = computeType(Ident(parent)).member(name)
+      println(s"$parent.$name volatile: ${tpe.asInstanceOf[scala.reflect.internal.Symbols#Symbol].typeSignature.isVolatile}")
+      val hi = tpe.typeSignature.asInstanceOf[scala.reflect.internal.Types#Type].bounds.hi
       val tpe_parents = hi.parents.map(_.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
       (if (tpe_parents.size == 1)
         List(hi.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
@@ -139,7 +141,7 @@ object virtualContext {
           }
           case None =>
             // we haven't defined this parent in this context so just find the right mixins in the fix class in our virtualContext's parents...
-            List()
+            if (isVC(n)) List() else List(n)
         }) ++ vcc.parents.flatMap(getClassMixinsInParent(n, _))
       } ++ currentPart(name)).distinct.reverse.flatMap { n =>
         // check if we missed some traits which may have been overriden in the own family...
@@ -220,7 +222,7 @@ object virtualContext {
           List()
       }
 
-      constructorTransformed ++ volatileFixesIntro ++ volatileFixes ++ volatileFixesInParents
+      constructorTransformed //++ volatileFixesIntro ++ volatileFixes ++ volatileFixesInParents
     }
 
     /**
@@ -234,10 +236,10 @@ object virtualContext {
     }
 
     def typeTree(types: List[Tree]): c.universe.Tree = {
-      if (types.length == 1)
-        types(0)
-      else
-        CompoundTypeTree(Template(types, emptyValDef, List()))
+      //if (types.length == 1)
+      //  types(0)
+      //else
+        CompoundTypeTree(Template(tq"""scala.AnyRef""" :: types, emptyValDef, List()))
     }
 
     def getNameFromSub(name: String) = name.takeRight(name.length - name.lastIndexOf("$") - 1)
@@ -377,7 +379,7 @@ object virtualContext {
       })
       constructorParameters
     }
-    
+
     def getConstructorParametersInParent(vc_name: TypeName, parent: TypeName) = {
       val factorySym = computeType(Ident(parent)).member(newTermName(factoryName(vc_name)))
       if (factorySym == NoSymbol)
@@ -413,19 +415,21 @@ object virtualContext {
               c.error(cd.pos, s"The following parents of the class family already declare a class with the name $name: " + parents.filter(t => parentIsVirtualClass(t, name)).mkString(", ") + "\nTo override functionality, declare the virtual class @virtualOverride.")
 
             val Template(vc_parents, _, vc_body) = impl
-            
+
             if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty)
               c.error(cd.pos, "Overriden virtual classes cannot define constructor parameters.")
-              
 
             val inheritRel = getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
             val classInner = getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
-            val typeDefInner: c.universe.Tree = typeTree(inheritRelMapped)
+            val typeDefInner: c.universe.Tree = //if (vcc.parents.length == 0)
+              typeTree(inheritRelMapped)
+            //else
+              //typeTree(inheritRelMapped)
 
             val classTmpl = convertToTraitConstructor(impl, name, tparams, body, mods, parents.map(p => newTypeName(getNameFromTree(p))), enclName, classInner)
 
-            val constructorParameters = if (!isOverridenVirtualClass(mods)) 
+            val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
               parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
@@ -441,11 +445,10 @@ object virtualContext {
             if (parents.exists(p => parentIsVirtualClass(p, name)) || (mods.hasFlag(ABSTRACT)))
               b
             else
-              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef, 
-                  List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))), 
-                      DefDef(Modifiers(), newTermName("apply"), List(), vparamss, TypeTree(), Apply(Ident(newTermName(factoryName(name))), constructorParameters.map { case (name, tpe) => Ident(name) })))
-                      // TODO: implement unapply method
-              )) ::
+              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef,
+                List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+                  DefDef(Modifiers(), newTermName("apply"), List(), vparamss, TypeTree(), Apply(Ident(newTermName(factoryName(name))), constructorParameters.map { case (name, tpe) => Ident(name) }))) // TODO: implement unapply method
+                  )) ::
                 DefDef(Modifiers(DEFERRED), newTermName(factoryName(name)), tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
                 b
           case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
@@ -467,12 +470,12 @@ object virtualContext {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
-      val clashOverrides = List()//nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
+      val clashOverrides = List() //nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       val fcn = newTypeName(fixClassName(name, enclName))
-      
+
       val fL = List(TypeDef(Modifiers(), name, tparams, typeDef),
-          //q"$mods class $fcn[..$tparams] (...$vparamss) extends ..$classParents { ..$clashOverrides }")
+        //q"$mods class $fcn[..$tparams] (...$vparamss) extends ..$classParents { ..$clashOverrides }")
         ClassDef(mods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
 
       val fixClassTypeName = if (tparams.isEmpty)
@@ -481,7 +484,7 @@ object virtualContext {
         AppliedTypeTree(Ident(newTypeName(fixClassName(name, enclName))), getTypeNames(tparams).map(t => Ident(t)))
 
       if (!(mods.hasFlag(ABSTRACT)))
-        DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map {case (name, tpe) => Ident(name)} )) ::
+        DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
           fL
       else
         fL
@@ -522,11 +525,11 @@ object virtualContext {
 
             val nc = nameClashesForVCClass(name, classParents, enclName, body)
 
-            val constructorParameters = if (!isOverridenVirtualClass(mods)) 
+            val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
               parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
-            
+
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc, constructorParameters)
 
           case _ => Nil

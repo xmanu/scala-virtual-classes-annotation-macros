@@ -19,7 +19,6 @@ object ExprTest1 extends App {
   val sub = ef.Sub(twelf, eight)
   val add2 = ef.Add(mul, sub)
   val div = ef.Div(add2, three2)
-  println(div.c.eval)
   println(div.rest)
   
   println(div.format + " = " + div.eval)
