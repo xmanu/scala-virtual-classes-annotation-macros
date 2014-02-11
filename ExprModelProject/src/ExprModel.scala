@@ -12,8 +12,7 @@ object ExprModelTest2 extends App {
 }
 
 @virtualContext class ExprModel {
-  @virtual abstract class Expr {
-  }
+  @virtual abstract class Expr
 
   @virtual class Constant(_value: Int) extends Expr {
     var value: Int = _value
@@ -31,14 +30,10 @@ trait EvalTrait {
 }
 
 @virtualContext class ExprEval extends ExprModel {
-  @virtualOverride abstract class Expr extends EvalTrait {
-  }
+  @virtualOverride abstract class Expr extends EvalTrait
 
   @virtualOverride class Constant {
     def eval: Int = value
-  }
-
-  @virtualOverride abstract class BinExpr {
   }
 
   @virtualOverride class Add {
@@ -73,15 +68,6 @@ trait EvalTrait {
 
   @virtualOverride abstract class BinExpr {
     def format: String = "(" + left.format + " " + op + " " + right.format + ")"
-    //def op: String
-  }
-
-  @virtualOverride class Add {
-    //def op = "+"
-  }
-
-  @virtualOverride class Mult {
-    //def op = "*"
   }
 }
 
