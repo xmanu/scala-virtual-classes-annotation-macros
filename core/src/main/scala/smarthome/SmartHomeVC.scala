@@ -1,3 +1,5 @@
+package smarthome
+
 import VirtualClasses._
 
 @virtualContext class Building {

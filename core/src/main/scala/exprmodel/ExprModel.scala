@@ -1,3 +1,5 @@
+package exprmodel
+
 import VirtualClasses._
 
 object ExprModelTest2 extends App {

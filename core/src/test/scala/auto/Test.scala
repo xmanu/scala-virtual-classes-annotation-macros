@@ -1,3 +1,5 @@
+package auto
+
 import VirtualClasses._
 
 object Test extends App {
@@ -17,9 +19,9 @@ class TestClass {
     def testMethod = println("Hello")
     def value = 2
   }
-  
+
   /*@virtual class Test3[T <: Test] {
-    
+
   }*/
 }
 
@@ -29,8 +31,8 @@ class TestClass2 extends TestClass {
   class Test {
     def testMethod2 = println("World!")
   }*/
-  
-  
+
+
   @virtual
   class Test2 extends Test {
     def test = println("Test " + value)

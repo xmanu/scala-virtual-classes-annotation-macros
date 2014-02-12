@@ -1,6 +1,8 @@
+package auto
+
 import VirtualClasses._
 
-object ExprModelTest2 extends App { 
+object ExprModelTest2 extends App {
   val epf = ExprEvalWithFormat()
   val three3 = epf.Constant()
   three3.value = 3
@@ -19,7 +21,7 @@ object ExprModelTest2 extends App {
   val div = epf.Div()
   div.left = add3
   div.right = three3
-  
+
   println(div.format + " = " + div.eval)
   println(div.formatPre)
   println(div.formatPost)
@@ -28,19 +30,19 @@ object ExprModelTest2 extends App {
 @virtualContext class ExprModel {
 	@virtual abstract class Expr {
 	}
-	
+
 	@virtual class Constant extends Expr {
 	  var value: Int = 0
 	}
-	
+
 	@virtual abstract class BinExpr extends Expr {
 	  var left: Expr = null
 	  var right: Expr = null
 	}
-	
+
 	@virtual class Add extends BinExpr {
 	}
-	
+
 	@virtual class Mult extends BinExpr {
 	}
 }
@@ -49,18 +51,18 @@ object ExprModelTest2 extends App {
 	@virtualOverride abstract class Expr {
 	  def eval: Int
 	}
-	
+
 	@virtualOverride class Constant {
 	  def eval: Int = value
 	}
-	
+
 	@virtualOverride abstract class BinExpr {
 	}
-	
+
 	@virtualOverride class Add {
 	  def eval: Int = left.eval + right.eval
 	}
-	
+
 	@virtualOverride class Mult {
 	  def eval: Int = left.eval * right.eval
 	}
@@ -82,20 +84,20 @@ object ExprModelTest2 extends App {
 	@virtualOverride abstract class Expr {
 	  def format: String
 	}
-	
+
 	@virtualOverride class Constant {
 	  def format: String = value.toString
 	}
-	
+
 	@virtualOverride abstract class BinExpr {
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
 	  //def op: String
 	}
-	
+
 	@virtualOverride class Add {
 	  //def op = "+"
 	}
-	
+
 	@virtualOverride class Mult {
 	  //def op = "*"
 	}
@@ -106,12 +108,12 @@ object ExprModelTest2 extends App {
     def formatPre: String
     def formatPost: String
   }
-  
+
   @virtualOverride class Constant {
     def formatPre = value.toString
     def formatPost = value.toString
   }
-  
+
   @virtualOverride abstract class BinExpr {
     def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
     def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
@@ -123,7 +125,7 @@ object ExprModelTest2 extends App {
     def op = "/"
     def eval = left.eval / right.eval
   }
-  
+
   @virtual class Sub extends BinExpr {
     def op = "-"
     def eval = left.eval - right.eval
