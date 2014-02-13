@@ -3,9 +3,7 @@ package smarthome
 import VirtualClasses._
 
 @virtualContext class Building {
-  @virtual abstract class Location {
-    
-  }
+  @virtual abstract class Location
   
   @virtual abstract class CompositeLocation extends Location {
     type T <: Location
@@ -13,9 +11,7 @@ import VirtualClasses._
     var locations: List[T] = List()
   }
   
-  @virtual class Room extends Location {
-    
-  }
+  @virtual class Room extends Location
   
   @virtual class Floor extends CompositeLocation {
     type T = Room
@@ -61,9 +57,7 @@ class Shutter { def raise() { println("Shutter raised") }; def lower() { println
   }
 }
 
-@virtualContext class LightsAndShutters extends Lights with Shutters {
-  
-}
+@virtualContext class LightsAndShutters extends Lights with Shutters
 
 @virtualContext class Estate extends Building with LightsAndShutters {
   @virtual class Garage extends Location {

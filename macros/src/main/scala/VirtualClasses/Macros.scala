@@ -72,7 +72,7 @@ object virtualContext {
 
     def getParentsInParent(parent: TypeName, name: TypeName) = {
       val tpe = computeType(Ident(parent)).member(name)
-      println(s"$parent.$name volatile: ${tpe.asInstanceOf[scala.reflect.internal.Symbols#Symbol].typeSignature.isVolatile}")
+      //println(s"$parent.$name volatile: ${tpe.asInstanceOf[scala.reflect.internal.Symbols#Symbol].typeSignature.isVolatile}")
       val hi = tpe.typeSignature.asInstanceOf[scala.reflect.internal.Types#Type].bounds.hi
       val tpe_parents = hi.parents.map(_.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
       (if (tpe_parents.size == 1)
@@ -119,7 +119,7 @@ object virtualContext {
     }
 
     def getClassMixinsInParent(name: TypeName, parent: TypeName) = {
-      val tpt = Select(Ident(parent.toString), newTypeName(finalClassName(parent.toString)))
+      val tpt = Select(Ident(parent.toTermName), newTypeName(finalClassName(parent.toString)))
       val tp = computeType(tpt)
       val fixClassTp = tp.declaration(newTypeName(fixClassName(name, parent)))
       if (tp != NoType && tp.baseClasses.length > 0 && fixClassTp.isClass) {
@@ -440,12 +440,12 @@ object virtualContext {
             //List(List(ValDef(Modifiers(PARAM), newTermName("value"), Ident(newTypeName("Int")), EmptyTree), ValDef(Modifiers(PARAM), newTermName("value2"), Ident(newTypeName("Int")), EmptyTree)))
 
             val b = List(
-              TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeDefInner)),
+              TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, classTmpl))
             if (parents.exists(p => parentIsVirtualClass(p, name)) || (mods.hasFlag(ABSTRACT)))
               b
             else
-              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident("scala"), newTypeName("AnyRef"))), emptyValDef,
+              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))), emptyValDef,
                 List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
                   DefDef(Modifiers(), newTermName("apply"), List(), vparamss, TypeTree(), Apply(Ident(newTermName(factoryName(name))), constructorParameters.map { case (name, tpe) => Ident(name) }))) // TODO: implement unapply method
                   )) ::
@@ -460,7 +460,7 @@ object virtualContext {
       val bodyCompletion = toCompleteFromParents.map { name =>
         val typeDef = getTypeBounds(newTypeName(name), getParentsInParents(newTypeName(name)))
 
-        TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), "scala"), newTypeName("Null")), typeTree(typeDef.map(Ident(_)))))
+        TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeTree(typeDef.map(Ident(_)))))
       }
 
       bodyTransform ++ bodyCompletion
@@ -519,7 +519,7 @@ object virtualContext {
               List(virtualTraitName(getNameFromSub(p.toString), enclName))
             else
               List())
-            println("classAdditions: " + classAdditions.mkString(" "))
+            //println("classAdditions: " + classAdditions.mkString(" "))
 
             val classParents = mapInheritanceRelation((classInner ++ classAdditions).distinct, body)
 
