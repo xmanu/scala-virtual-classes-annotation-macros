@@ -69,7 +69,7 @@ trait EvalTrait {
   }
 
   @virtualOverride abstract class BinExpr {
-    def format: String = "(" + left.format + " " + op + " " + right.format + ")"
+    def format: String = s"(${left.format} $op ${right.format})"
   }
 }
 
@@ -85,8 +85,8 @@ trait EvalTrait {
   }
 
   @virtualOverride abstract class BinExpr {
-    def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
-    def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
+    def formatPre: String = s"($op ${left.formatPre} ${right.formatPre})"
+    def formatPost: String = s"${left.formatPost} ${right.formatPost} $op"
   }
 }
 
