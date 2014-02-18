@@ -39,7 +39,7 @@ class Test20 extends UnitSpec {
 }
 
 @virtualContext class OuterB20 extends OuterA20 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     private val _a = "B.a";
 
     override def queryA = super.queryA + ", " + _a
@@ -47,7 +47,7 @@ class Test20 extends UnitSpec {
 }
 
 @virtualContext class OuterC20 extends OuterA20 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     private val _a = "C.a";
 
     override def queryA = super.queryA + ", " + _a
@@ -55,7 +55,7 @@ class Test20 extends UnitSpec {
 }
 
 @virtualContext class OuterD20 extends OuterB20 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     private val _a = "D.a";
 
     override def queryA = super.queryA + ", " + _a
@@ -67,7 +67,7 @@ class Test20 extends UnitSpec {
 }
 
 @virtualContext class OuterF20 extends OuterA20 with OuterC20 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     private val _a = "F.a";
 
     override def queryA = super.queryA + ", " + _a
@@ -79,7 +79,7 @@ class Test20 extends UnitSpec {
 }
 
 @virtualContext class OuterH20 extends OuterE20 with OuterF20 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     private val _a = "H.a";
 
     override def queryA = super.queryA + ", " + _a

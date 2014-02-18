@@ -28,7 +28,7 @@ class Test2 extends UnitSpec {
 
 //=========================================================
 @virtualContext class CG1 extends G1 {
-  @virtualOverride class E {
+  @virtual override class E {
     var col: Color = null;
   }
 }

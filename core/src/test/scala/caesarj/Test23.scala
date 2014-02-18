@@ -63,19 +63,19 @@ class Test23 extends UnitSpec {
 }
 
 @virtualContext class OuterB23 extends OuterA23 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     override def queryA = super.queryA + ", B.A";
   }
 
-  @virtualOverride class InnerC {
+  @virtual override class InnerC {
     override def queryA = super.queryA + ", B.C";
   }
 
-  @virtualOverride class InnerD {
+  @virtual override class InnerD {
     override def queryA = super.queryA + ", B.D";
   }
 
-  @virtualOverride class InnerF {
+  @virtual override class InnerF {
     override def queryA = super.queryA + ", B.F";
   }
 
@@ -85,19 +85,19 @@ class Test23 extends UnitSpec {
 }
 
 @virtualContext class OuterC23 extends OuterA23 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     override def queryA = super.queryA + ", C.A";
   }
 
-  @virtualOverride class InnerB {
+  @virtual override class InnerB {
     override def queryA = super.queryA + ", C.B";
   }
 
-  @virtualOverride class InnerC {
+  @virtual override class InnerC {
     override def queryA = super.queryA + ", C.C";
   }
 
-  @virtualOverride class InnerD {
+  @virtual override class InnerD {
     override def queryA = super.queryA + ", C.D";
   }
 

@@ -51,7 +51,7 @@ class Test13 extends UnitSpec {
 }
 
 @virtualContext class OuterB3 extends OuterA3 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     override def queryB = "B.A.B";
 
     override def queryD = "B.A.D";
@@ -63,7 +63,7 @@ class Test13 extends UnitSpec {
     override def queryG = "B.A.G";
   }
 
-  @virtualOverride class InnerB {
+  @virtual override class InnerB {
     // BUG: this should not be neccessary!
     override def queryE = super[VC_TRAIT$OuterA3$InnerB].queryE
 

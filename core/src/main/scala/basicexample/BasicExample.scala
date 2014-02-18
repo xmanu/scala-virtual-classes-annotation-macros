@@ -29,8 +29,8 @@ class Foo {
 
 @virtualContext
 class SubFoo extends Foo {
-  @virtualOverride
-  class Bar {
+  @virtual
+  override class Bar {
     override def foo = 42
   }
 }

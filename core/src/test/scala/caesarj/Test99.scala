@@ -46,22 +46,22 @@ class Test99 extends UnitSpec {
   @virtual class InsectPlant extends Plant {
   }
 
-  @virtualOverride class Maple extends Nestable {
+  @virtual override class Maple extends Nestable {
   }
 
-  @virtualOverride class Cherry extends NectarPlant with InsectPlant with Nestable {
+  @virtual override class Cherry extends NectarPlant with InsectPlant with Nestable {
   }
 
-  @virtualOverride class Locust extends InsectPlant with Nestable {
+  @virtual override class Locust extends InsectPlant with Nestable {
   }
 
-  @virtualOverride class Pine extends InsectPlant with Nestable {
+  @virtual override class Pine extends InsectPlant with Nestable {
   }
 
-  @virtualOverride class Dandellon extends NectarPlant {
+  @virtual override class Dandellon extends NectarPlant {
   }
 
-  @virtualOverride class Woodman extends Predator {
+  @virtual override class Woodman extends Predator {
     var attackingRating: Int = 0
   }
   
@@ -83,29 +83,29 @@ class Test99 extends UnitSpec {
   @virtual class Hardwood extends Tree {
   }
 
-  @virtualOverride class Maple extends Hardwood {
+  @virtual override class Maple extends Hardwood {
   }
 
-  @virtualOverride class Cherry extends Hardwood {
+  @virtual override class Cherry extends Hardwood {
   }
 
-  @virtualOverride class Pine extends Softwood {
+  @virtual override class Pine extends Softwood {
   }
 
-  @virtualOverride class Dandellon extends NonTree {
+  @virtual override class Dandellon extends NonTree {
   }
 
-  @virtualOverride class Bird extends NonTree {
+  @virtual override class Bird extends NonTree {
   }
 
-  @virtualOverride class Woodman extends NonTree {
+  @virtual override class Woodman extends NonTree {
     var salary: Int = 0
   }
 }
 
 @virtualContext class WoodmanEagleSubject extends WoodmanSubject with EagleSubject {
 
-  @virtualOverride class Tree extends Plant {
+  @virtual override class Tree extends Plant {
     override def chopDown {
       super.chopDown
       foodValue = 0

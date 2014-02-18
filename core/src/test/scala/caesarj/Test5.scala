@@ -34,7 +34,7 @@ class Test5 extends UnitSpec {
 
   def queryB() = "B.B"
 
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     def accessOuterB() = accessOuterA() + ", " + queryA() + ", " + queryB()
   }
 }

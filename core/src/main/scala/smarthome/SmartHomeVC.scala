@@ -25,7 +25,7 @@ import VirtualClasses._
 class Light { def turnOn() {  println("light on")  }; def turnOff() {  println("light off")  }; }
 
 @virtualContext class Lights extends Building {
-  @virtualOverride abstract class Location {
+  @virtual override abstract class Location {
     var _lights: List[Light] = List()
     
     def lights: List[Light] = _lights
@@ -35,7 +35,7 @@ class Light { def turnOn() {  println("light on")  }; def turnOff() {  println("
     def turnLightsOff = lights.foreach(_.turnOff())
   }
   
-  @virtualOverride abstract class CompositeLocation {
+  @virtual override abstract class CompositeLocation {
     override def lights: List[Light] = _lights ++ locations.flatMap(location => location.lights)
   }
 }
@@ -43,7 +43,7 @@ class Light { def turnOn() {  println("light on")  }; def turnOff() {  println("
 class Shutter { def raise() { println("Shutter raised") }; def lower() { println("Shutter lowered") }; }
 
 @virtualContext class Shutters extends Building {
-  @virtualOverride abstract class Location {
+  @virtual override abstract class Location {
     var _shutters: List[Shutter] = List()
     def shutters: List[Shutter] = _shutters
 
@@ -52,7 +52,7 @@ class Shutter { def raise() { println("Shutter raised") }; def lower() { println
     def raise = shutters.foreach(_.raise)
   }
   
-  @virtualOverride abstract class CompositeLocation {
+  @virtual override abstract class CompositeLocation {
     override def shutters: List[Shutter] = _shutters ++ locations.flatMap(location => location.shutters)
   }
 }

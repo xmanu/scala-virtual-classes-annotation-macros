@@ -32,5 +32,5 @@ class Test32 extends UnitSpec {
 }
 
 @virtualContext class OuterB32 extends OuterA32 {
-  @virtualOverride class InnerC extends InnerB {}
+  @virtual override class InnerC extends InnerB {}
 }

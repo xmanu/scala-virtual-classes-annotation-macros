@@ -28,32 +28,32 @@ class Test4 extends UnitSpec {
 
 //=========================================================
 @virtualContext class EvalAST extends AST {
-  @virtualOverride class Expression {
+  @virtual override class Expression {
     def eval(): Int = 0
   }
 
-  @virtualOverride class AddExpression {
+  @virtual override class AddExpression {
     override def eval() = {
       l.eval() + r.eval();
     }
   }
 
-  @virtualOverride class Literal {
+  @virtual override class Literal {
     override def eval() = value
   }
 }
 
 //=========================================================
 @virtualContext class PrettyPrintAST extends AST {
-  @virtualOverride class Expression {
+  @virtual override class Expression {
     def print() = ""
   }
 
-  @virtualOverride class AddExpression {
+  @virtual override class AddExpression {
     override def print() = s"( ${l.print()} + ${r.print()} )"
   }
 
-  @virtualOverride class Literal {
+  @virtual override class Literal {
     override def print() = value.toString();
   }
 }
@@ -66,7 +66,7 @@ class Test4 extends UnitSpec {
 
 //=========================================================
 @virtualContext class EvalPrettyPrintNegAST extends EvalAST with PrettyPrintAST with NegAST {
-  @virtualOverride class NegExpression {
+  @virtual override class NegExpression {
     override def eval() = -expr.eval() 
     override def print() = s"-( ${expr.print()} )";
   }

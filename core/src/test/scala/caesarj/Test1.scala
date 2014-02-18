@@ -18,7 +18,7 @@ class Test1 extends UnitSpec {
 }
 
 @virtualContext class B extends A {
-  @virtualOverride class X {
+  @virtual override class X {
     override def test: String = super.test + "->b.X"
   }
 }

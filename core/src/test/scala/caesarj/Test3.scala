@@ -65,7 +65,7 @@ class Test3 extends UnitSpec {
     println("CG.doSomethingWithEdge");
   }
 
-  @virtualOverride class E {
+  @virtual override class E {
     var col: String = "";
 
     def someSpecialAlg() {
@@ -80,14 +80,14 @@ class Test3 extends UnitSpec {
 
 //=========================================================
 @virtualContext class WG extends G {
-  @virtualOverride class E {
+  @virtual override class E {
     var w: Float = 0;
   }
 }
 
 //=========================================================
 @virtualContext class CWG extends CG with WG {
-  @virtualOverride class E {
+  @virtual override class E {
     def nowWeHaveItAll() {
       val w = this.w;
       val col = this.col;

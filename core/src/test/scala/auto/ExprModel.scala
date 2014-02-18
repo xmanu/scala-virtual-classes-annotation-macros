@@ -74,39 +74,39 @@ object ExprTest1 extends App {
 }
 
 @virtualContext class ExprFormat1 extends ExprModel1 {
-	@virtualOverride abstract class Expr {
+	@virtual override abstract class Expr {
 	  def format: String
 	}
 
-	@virtualOverride class Constant {
+	@virtual override class Constant {
 	  def format: String = value.toString
 	}
 
-	@virtualOverride abstract class BinExpr {
+	@virtual override abstract class BinExpr {
 	  def op: String
 	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
 	}
 
-	@virtualOverride class Add {
+	@virtual override class Add {
 	  def op: String = "+"
 	}
 
-	@virtualOverride class Mult {
+	@virtual override class Mult {
 	  def op: String = "*"
 	}
 }
 
 @virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
-  @virtualOverride abstract class Chain {
+  @virtual override abstract class Chain {
     def op: String
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"
   }
 
-  @virtualOverride class AddChain {
+  @virtual override class AddChain {
     def op = "+"
   }
 
-  @virtualOverride class MultChain {
+  @virtual override class MultChain {
     def op = "*"
   }
 }
@@ -127,54 +127,54 @@ object ExprTest1 extends App {
 }
 
 @virtualContext class ExprFormatPrePost1 extends ExprPrefixFormat1 {
-  @virtualOverride abstract class Expr {
+  @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
   }
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     override def formatPre = value.toString
     def formatPost = value.toString
   }
 
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     def op2: String
     override def formatPre: String = "(" + op2 + " " + left.formatPre + " " + right.formatPre + ")"
     def formatPost: String = left.formatPost + " " + right.formatPost + " " + op2
   }
 
-  @virtualOverride class Add {
+  @virtual override class Add {
     def op2 = "+"
   }
-  @virtualOverride class Mult {
+  @virtual override class Mult {
     def op2 = "*"
   }
 }
 
 @virtualContext class ExprPrefixFormat1 extends ExprFormat1 {
-  @virtualOverride abstract class Expr {
+  @virtual override abstract class Expr {
     def formatPre: String
   }
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     def formatPre = value.toString
   }
 
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     override def formatPre: String = s"($op ${left.format} ${right.format})"
   }
 }
 
 @virtualContext class ExprPostFixFormat1 extends ExprFormat1 {
-  @virtualOverride abstract class Expr {
+  @virtual override abstract class Expr {
     def formatPost: String
   }
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     def formatPost = value.toString
   }
 
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     override def formatPost: String = s"(${left.format} ${right.format} $op)"
   }
 }

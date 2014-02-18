@@ -33,19 +33,23 @@ object virtualContext {
 
     val volatileFixMap: scala.collection.mutable.HashMap[String, String] = new scala.collection.mutable.HashMap()
 
-    def noParameterConstructor = DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
-    def noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
+    lazy val noParameterConstructor = q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""//DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+    lazy val noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
       DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
     }
 
     def isVirtualClass(mods: c.universe.Modifiers) = {
-      mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()" || a.toString == "new virtualOverride()"))
+      mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()"))
     }
+    
+    def isAbstract(mods: c.universe.Modifiers) =
+      (mods.hasFlag(ABSTRACT) || mods.hasFlag(ABSOVERRIDE))
 
     def isOverridenVirtualClass(mods: c.universe.Modifiers) = {
-      mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtualOverride()"))
+      mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()")) &&
+      (mods.hasFlag(OVERRIDE) || mods.hasFlag(ABSOVERRIDE))
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
@@ -193,7 +197,7 @@ object virtualContext {
       })
 
       val volatileFixesIntro: List[Tree] = {
-        if (mods.hasFlag(ABSTRACT) && !parents.exists(p => parentIsVirtualClass(Ident(p), name)))
+        if (isAbstract(mods) && !parents.exists(p => parentIsVirtualClass(Ident(p), name)))
           List({
             val volatileFixName = newTermName(volatileFixMap.get(name.toString).get)
             DefDef(Modifiers(DEFERRED), volatileFixName, List(), List(List()), tq"""Int""", EmptyTree)
@@ -397,7 +401,7 @@ object virtualContext {
 
       body.foreach(b =>
         b match {
-          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods) && mods.hasFlag(ABSTRACT)) =>
+          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods) && isAbstract(mods)) =>
             volatileFixMap.put(name.toString, c.fresh("volatileFix$"))
           case _ => ;
         })
@@ -442,7 +446,7 @@ object virtualContext {
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, classTmpl))
-            if (parents.exists(p => parentIsVirtualClass(p, name)) || (mods.hasFlag(ABSTRACT)))
+            if (parents.exists(p => parentIsVirtualClass(p, name)) || (isAbstract(mods)))
               b
             else
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))), emptyValDef,
@@ -474,16 +478,18 @@ object virtualContext {
 
       val fcn = newTypeName(fixClassName(name, enclName))
 
+      val fixMods = if (isAbstract(mods)) Modifiers(ABSTRACT) else NoMods 
+      
       val fL = List(TypeDef(Modifiers(), name, tparams, typeDef),
         //q"$mods class $fcn[..$tparams] (...$vparamss) extends ..$classParents { ..$clashOverrides }")
-        ClassDef(mods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
+        ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
 
       val fixClassTypeName = if (tparams.isEmpty)
         Ident(newTypeName(fixClassName(name, enclName)))
       else
         AppliedTypeTree(Ident(newTypeName(fixClassName(name, enclName))), getTypeNames(tparams).map(t => Ident(t)))
 
-      if (!(mods.hasFlag(ABSTRACT)))
+      if (!(isAbstract(mods)))
         DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
           fL
       else
@@ -594,9 +600,9 @@ class virtual extends StaticAnnotation {
   //def macroTransform(annottees: Any*) = macro virtualMacro.impl
 }
 
-class virtualOverride extends StaticAnnotation {
-
-}
+//class virtualOverride extends StaticAnnotation {
+//
+//}
 
 object printMacro {
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {

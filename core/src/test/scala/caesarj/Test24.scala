@@ -39,7 +39,7 @@ class Test24 extends UnitSpec {
 }
 
 @virtualContext class OuterB24 extends OuterA24 {
-  @virtualOverride class InnerA {
+  @virtual override class InnerA {
     override def queryA = "B." + name + ", " + super.queryA;
   }
 
