@@ -51,59 +51,59 @@ trait EvalTrait {
 }
 
 @virtualContext class ExprEval extends ExprModel {
-  @virtualOverride abstract class Expr extends EvalTrait
+  @virtual override abstract class Expr extends EvalTrait
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     def eval: Int = value
   }
 
-  @virtualOverride class Add {
+  @virtual override class Add {
     def eval: Int = left.eval + right.eval
   }
 
-  @virtualOverride class Mult {
+  @virtual override class Mult {
     def eval: Int = left.eval * right.eval
   }
 }
 
 @virtualContext class ExprModelOp extends ExprModel {
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     def op: String
   }
-  @virtualOverride class Add {
+  @virtual override class Add {
     def op = "+"
   }
-  @virtualOverride class Mult {
+  @virtual override class Mult {
     def op = "*"
   }
 }
 
 @virtualContext class ExprFormat extends ExprModelOp {
-  @virtualOverride abstract class Expr {
+  @virtual override abstract class Expr {
     def format: String
   }
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     def format: String = value.toString
   }
 
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     def format: String = "(" + left.format + " " + op + " " + right.format + ")"
   }
 }
 
 @virtualContext class ExprFormatPrePost extends ExprFormat {
-  @virtualOverride abstract class Expr {
+  @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
   }
 
-  @virtualOverride class Constant {
+  @virtual override class Constant {
     def formatPre = value.toString
     def formatPost = value.toString
   }
 
-  @virtualOverride abstract class BinExpr {
+  @virtual override abstract class BinExpr {
     def formatPre: String = "(" + op + " " + left.formatPre + " " + right.formatPre + ")"
     def formatPost: String = left.formatPost + " " + right.formatPost + " " + op
   }
