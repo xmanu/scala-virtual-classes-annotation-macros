@@ -45,11 +45,11 @@ object virtualContext {
     }
     
     def isAbstract(mods: c.universe.Modifiers) =
-      (mods.hasFlag(ABSTRACT) || mods.hasFlag(ABSOVERRIDE))
+      mods.hasFlag(OVERRIDE | ABSOVERRIDE)
 
     def isOverridenVirtualClass(mods: c.universe.Modifiers) = {
       mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()")) &&
-      (mods.hasFlag(OVERRIDE) || mods.hasFlag(ABSOVERRIDE))
+      mods.hasFlag(OVERRIDE | ABSOVERRIDE)
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {

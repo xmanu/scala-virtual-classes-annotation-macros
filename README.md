@@ -6,9 +6,15 @@ Virtual Classes for Scala implemented as annotation macros
 Usage:
 -------
 1. Check out the repository
-2. Load project "Macro" in Eclipse
-3. Create an own project and add the "Macro" Project as required dependency
-4. Be sure to include the macro paradise plugin to compile correctly.
+2. Add your own project to the `Build.scala` like this:
+```scala
+lazy val myproject: Project = Project(
+  "myproject",
+  file("myproject")
+) dependsOn(macros)
+````
+3. Run `sbt eclipse`
+4. Import the projects in Eclipse.
 
 Syntax:
 --------
