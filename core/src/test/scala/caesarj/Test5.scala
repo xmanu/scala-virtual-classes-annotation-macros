@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test5 extends UnitSpec {
   "outer access" should "work" in {

@@ -1,4 +1,4 @@
-package caesarj
+package specs
 
 import org.scalatest._
 

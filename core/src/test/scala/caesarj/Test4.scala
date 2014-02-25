@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test4 extends UnitSpec {
   "AST" should "print fine" in {

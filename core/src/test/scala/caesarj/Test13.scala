@@ -1,13 +1,14 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test13 extends UnitSpec {
   "inherited methods" should "work" in {
     val expectedResult = "A.A.A, A.B.B, A.B.C, B.A.D, A.B.E, B.B.F, B.B.G";
 
     
-     val ob = OuterB3();
+     val ob = OuterB13();
 		val bb = ob.InnerB();
 
 		val resA = bb.queryA;
@@ -24,7 +25,7 @@ class Test13 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA3 {
+@virtualContext class OuterA13 {
   @virtual class InnerA {
     def queryA = "A.A.A";
 
@@ -50,7 +51,7 @@ class Test13 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB3 extends OuterA3 {
+@virtualContext class OuterB13 extends OuterA13 {
   @virtual override class InnerA {
     override def queryB = "B.A.B";
 
@@ -65,7 +66,7 @@ class Test13 extends UnitSpec {
 
   @virtual override class InnerB {
     // BUG: this should not be neccessary!
-    override def queryE = super[VC_TRAIT$OuterA3$InnerB].queryE
+    override def queryE = super[VC_TRAIT$OuterA13$InnerB].queryE
 
     override def queryF = "B.B.F";
 

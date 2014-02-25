@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test10 extends UnitSpec {
   "factory methods of outer classes" should "work" in {

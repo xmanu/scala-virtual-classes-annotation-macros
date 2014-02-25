@@ -2,6 +2,7 @@ package caesarj
 
 import VirtualClasses._
 import java.awt.Color
+import specs.UnitSpec
 
 class Test2 extends UnitSpec {
   "UE e.isConnecting(n1, n2)" should "be false" in {

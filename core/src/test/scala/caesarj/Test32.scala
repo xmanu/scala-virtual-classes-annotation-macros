@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test32 extends UnitSpec {
   "introducing new inheritance" should "work" in {

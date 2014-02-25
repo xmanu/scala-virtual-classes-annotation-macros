@@ -1,11 +1,12 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test99 extends UnitSpec {
 
-  /*"A maple instance of WoodmanEagleSubject" should "have the foodValue 0 after chopping down" in {
-    val wes: WoodmanEagleSubject = WoodmanEagleSubject()
+  "A maple instance of WoodmanEagleSubject" should "have the foodValue 0 after chopping down" in {
+    /*val wes: WoodmanEagleSubject = WoodmanEagleSubject()
     val maple: wes.Maple = wes.Maple()
     println("setting maple food value to 100")
     maple.foodValue = 100
@@ -13,8 +14,9 @@ class Test99 extends UnitSpec {
     assert(maple.foodValue == 100)
     maple.chopDown
     assert(maple.foodValue == 0)
-    println(s"new maple food value is ${maple.foodValue}")
-  }*/
+    println(s"new maple food value is ${maple.foodValue}")*/
+    fail("We have the volatile problem!")
+  }
 }
 
 /*@virtualContext class Forest {

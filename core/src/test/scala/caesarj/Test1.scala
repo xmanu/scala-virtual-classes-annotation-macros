@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test1 extends UnitSpec {
   "A derived virtual class" should "be able to access super" in {

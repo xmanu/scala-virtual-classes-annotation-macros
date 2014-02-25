@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test24 extends UnitSpec {
   "lists" should "work" in {

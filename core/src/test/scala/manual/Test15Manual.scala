@@ -1,6 +1,6 @@
 package manual
 
-import caesarj.UnitSpec
+import specs.UnitSpec
 
 object Test15Manual extends UnitSpec {
   "long inheritance sequence" should "work in manual example" in {

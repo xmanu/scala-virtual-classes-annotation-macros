@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test15 extends UnitSpec {
   "long inheritance sequence" should "work" in {

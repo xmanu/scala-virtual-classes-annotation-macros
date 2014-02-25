@@ -15,6 +15,9 @@ object virtualContext {
       def isDeferred: Boolean = {
         s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].hasFlag(scala.reflect.internal.Flags.DEFERRED)
       }
+      def isVal: Boolean = {
+        s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isVal
+      }
     }
 
     // introduce paramaccessor as flag because macros don't provide it.
@@ -471,16 +474,14 @@ object virtualContext {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
-      val clashOverrides = List() //nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
+      val clashOverrides = List()//nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       val fcn = newTypeName(fixClassName(name, enclName))
 
       val fixMods = if (isAbstract(mods)) Modifiers(ABSTRACT) else NoMods
 
-      val fL = List(TypeDef(Modifiers(), name, tparams, typeDef),
-        //q"$fixMods class ${fixClassName(name, enclName)}[..$tparams] (...$vparamss) extends ..$classParents { ..$clashOverrides }")
-        ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
-
+      val td = TypeDef(Modifiers(), name, tparams, typeDef)
+      
       val fixClassTypeName = if (tparams.isEmpty)
         Ident(newTypeName(fixClassName(name, enclName)))
       else
@@ -488,9 +489,11 @@ object virtualContext {
 
       if (!(isAbstract(mods)))
         DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
-          fL
+          td :: 
+          ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
       else
-        fL
+        // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
+        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides))) 
     }
 
     def finalClassBodyContainsVCClass(body: List[Tree], name: String) = {

@@ -1,62 +1,69 @@
 package auto
 
+import specs.UnitSpec
 import VirtualClasses._
 
-object ExprTest1 extends App {
-  val em = ExprModelChain1()
-  val two = em.Constant(2)
-  val three = em.Constant(3)
-  val chain = em.AddChain()
-  chain.chain = List(three, two, two)
-  val plus = em.Add(two, chain)
-  println(plus.eval)
+class ExprModelTests1 extends UnitSpec {
+  "ExprModelChain" should "be evaluatable" in {
+    val em = ExprModelChain1()
+    val two = em.Constant(2)
+    val three = em.Constant(3)
+    val chain = em.AddChain()
+    chain.chain = List(three, two, two)
+    val plus = em.Add(two, chain)
+    plus.eval should equal(9)
+  }
 
-  val ef = ExprFormatExtended1()
-  val three2 = ef.Constant(3)
-  val five = ef.Constant(5)
-  val seven = ef.Constant(7)
-  val twelf = ef.Constant(12)
-  val eight = ef.Constant(8)
-  val mul = ef.Mult(five, seven)
-  val sub = ef.Sub(twelf, eight)
-  val add2 = ef.Add(mul, sub)
-  val div = ef.Div(add2, three2)
-  println(div.rest)
+  "ExprFormatExtended" should "be formatable and evaluatable" in {
+    val ef = ExprFormatExtended1()
+    val three2 = ef.Constant(3)
+    val five = ef.Constant(5)
+    val seven = ef.Constant(7)
+    val twelf = ef.Constant(12)
+    val eight = ef.Constant(8)
+    val mul = ef.Mult(five, seven)
+    val sub = ef.Sub(twelf, eight)
+    val add2 = ef.Add(mul, sub)
+    val div = ef.Div(add2, three2)
+    div.rest should equal(0)
+    div.format should equal("(((5 * 7) + (12 - 8)) / 3)")
+    div.eval should equal (13)
+  }
 
-  println(div.format + " = " + div.eval)
+  "ExprFormatExtended" should "be formatable" in {
+    val epf = ExprFormatWithPrePost1()
+    val three3 = epf.Constant(3)
+    val five2 = epf.Constant(5)
+    val seven2 = epf.Constant(7)
+    val twelf2 = epf.Constant(12)
+    val mul2 = epf.Mult(five2, seven2)
+    val add3 = epf.Add(mul2, twelf2)
 
-  val epf = ExprFormatWithPrePost1()
-  val three3 = epf.Constant(3)
-  val five2 = epf.Constant(5)
-  val seven2 = epf.Constant(7)
-  val twelf2 = epf.Constant(12)
-  val mul2 = epf.Mult(five2, seven2)
-  val add3 = epf.Add(mul2, twelf2)
-
-  println(add3.format + " = " + add3.eval)
-  println(add3.formatPre)
-  println(add3.formatPost)
+    add3.format should equal("((5 * 7) + 12)")
+    add3.formatPre should equal("(+ (* 5 7) 12)")
+    add3.formatPost should equal("5 7 * 12 +")
+  }
 }
 
 @virtualContext class ExprModel1 {
-	@virtual abstract class Expr {
-	  def eval: Int
-	}
+  @virtual abstract class Expr {
+    def eval: Int
+  }
 
-	@virtual class Constant(val value: Int) extends Expr {
-	  def eval: Int = value
-	}
+  @virtual class Constant(val value: Int) extends Expr {
+    def eval: Int = value
+  }
 
-	@virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr {
-	}
+  @virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr {
+  }
 
-	@virtual class Add(val left: Expr, val right: Expr) extends BinExpr {
-	  def eval: Int = left.eval + right.eval
-	}
+  @virtual class Add(val left: Expr, val right: Expr) extends BinExpr {
+    def eval: Int = left.eval + right.eval
+  }
 
-	@virtual class Mult(val left: Expr, val right: Expr) extends BinExpr {
-	  def eval: Int = left.eval * right.eval
-	}
+  @virtual class Mult(val left: Expr, val right: Expr) extends BinExpr {
+    def eval: Int = left.eval * right.eval
+  }
 }
 
 @virtualContext class ExprModelChain1 extends ExprModel1 {
@@ -74,26 +81,26 @@ object ExprTest1 extends App {
 }
 
 @virtualContext class ExprFormat1 extends ExprModel1 {
-	@virtual override abstract class Expr {
-	  def format: String
-	}
+  @virtual override abstract class Expr {
+    def format: String
+  }
 
-	@virtual override class Constant {
-	  def format: String = value.toString
-	}
+  @virtual override class Constant {
+    def format: String = value.toString
+  }
 
-	@virtual override abstract class BinExpr {
-	  def op: String
-	  def format: String = "(" + left.format + " " + op + " " + right.format + ")"
-	}
+  @virtual override abstract class BinExpr {
+    def op: String
+    def format: String = "(" + left.format + " " + op + " " + right.format + ")"
+  }
 
-	@virtual override class Add {
-	  def op: String = "+"
-	}
+  @virtual override class Add {
+    def op: String = "+"
+  }
 
-	@virtual override class Mult {
-	  def op: String = "*"
-	}
+  @virtual override class Mult {
+    def op: String = "*"
+  }
 }
 
 @virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
@@ -161,7 +168,7 @@ object ExprTest1 extends App {
   }
 
   @virtual override abstract class BinExpr {
-    override def formatPre: String = s"($op ${left.format} ${right.format})"
+    override def formatPre: String = s"($op ${left.formatPre} ${right.formatPre})"
   }
 }
 
@@ -175,7 +182,7 @@ object ExprTest1 extends App {
   }
 
   @virtual override abstract class BinExpr {
-    override def formatPost: String = s"(${left.format} ${right.format} $op)"
+    override def formatPost: String = s"${left.formatPost} ${right.formatPost} $op"
   }
 }
 

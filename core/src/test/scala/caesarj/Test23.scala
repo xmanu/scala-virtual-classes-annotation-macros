@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test23 extends UnitSpec {
   "inner classes" should "join correctly" in {

@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test9 extends UnitSpec {
   "other traits" should "be mixable" in {

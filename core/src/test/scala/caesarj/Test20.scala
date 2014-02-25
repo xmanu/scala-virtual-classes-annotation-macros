@@ -1,6 +1,7 @@
 package caesarj
 
 import VirtualClasses._
+import specs.UnitSpec
 
 class Test20 extends UnitSpec {
   "linearization of state" should "work" in {
