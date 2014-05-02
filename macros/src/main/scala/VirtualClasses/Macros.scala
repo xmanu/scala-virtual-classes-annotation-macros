@@ -566,7 +566,7 @@ object virtualContext {
           val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents) :: DefDef(Modifiers(), TermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(TypeName(finalClassName(name)))), termNames.CONSTRUCTOR), List())) :: Nil
           val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), noSelfType, newObjectBody)
           val newObjectDef = ModuleDef(Modifiers(), name.toTermName, newObjectTemplate)
-          Block(List(classDef, newObjectDef), Literal(Constant()))
+          Block(List(classDef, newObjectDef), Literal(Constant((): Unit)))
       }
     }
     c.Expr[Any](result)
