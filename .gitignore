@@ -15,3 +15,5 @@ project/plugins/project/
 .cache
 
 /Macro/.cache
+
+/core/.worksheet/

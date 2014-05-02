@@ -7,10 +7,10 @@ object ExprModelTest2 extends App {
   import epf._
   val div = Div(Add(Mult(Constant(2), Constant(7)), Constant(13)), Constant(3))
 
-  println(div.format + " = " + div.eval)
+  println(div.format + " = " + div.eval) // (((2 * 7) + 13) / 3) = 9
   println(div.formatPre)
   println(div.formatPost)
-  println(div.asInstanceOf[EvalTrait].eval)
+  println(div.asInstanceOf[EvalTrait].eval) // 9
 }
 
 @virtualContext class ExprModel {
