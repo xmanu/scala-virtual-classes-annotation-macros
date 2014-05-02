@@ -188,8 +188,8 @@ object virtualContext {
       } catch {
         case _: Throwable => NoType
       }
-      if (tpe == NoType)
-        println(tpt)
+      //if (tpe == NoType)
+      //  println(tpt)
       tpe
     }
 
