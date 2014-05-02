@@ -166,13 +166,13 @@ object virtualContext {
       val Expr(Block(stats, Apply(TypeApply(someValueFun, _), someTypeArgs))) = someValueOfTypeString
 
       val someValueOfGivenType = Block(stats, Apply(TypeApply(someValueFun, List(typeTree)), someTypeArgs))
-      val someValueOfGivenTypeChecked = c.typecheck(someValueOfGivenType)
+      val someValueOfGivenTypeChecked = c.typecheck(someValueOfGivenType, silent = true, withMacrosDisabled = true)
 
       someValueOfGivenTypeChecked.tpe
     }
 
     def computeType(tpt: Tree): Type = {
-      try {
+      val tpe = try {
         if (tpt.tpe != null) {
           tpt.tpe
         } else {
@@ -188,6 +188,9 @@ object virtualContext {
       } catch {
         case _: Throwable => NoType
       }
+      if (tpe == NoType)
+        println(tpt)
+      tpe
     }
 
     def transformVCBody(body: List[Tree], vc_parents: List[Tree], bodies: List[Tree], name: TypeName, mods: Modifiers, parents: List[TypeName], enclName: TypeName, inheritRel: List[String]) = {
@@ -263,7 +266,10 @@ object virtualContext {
       try {
         val tpt = Ident(TypeName(name))
         val tp = computeType(tpt)
-        tp.members.filter(s => s.name.toString.startsWith("VC_TRAIT$")).toList
+        if (tp != NoType)
+          tp.members.filter(s => s.name.toString.startsWith("VC_TRAIT$")).toList
+        else
+          List()
       } catch {
         case e: Throwable => e.printStackTrace(); Nil
       }
@@ -474,14 +480,14 @@ object virtualContext {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
-      val clashOverrides = List()//nameClashes.map(s => DefDef(Modifiers(OVERRIDE), TermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), TermName(s._1))))
+      val clashOverrides = List() //nameClashes.map(s => DefDef(Modifiers(OVERRIDE), TermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), TermName(s._1))))
 
       val fcn = TypeName(fixClassName(name, enclName))
 
       val fixMods = if (isAbstract(mods)) Modifiers(ABSTRACT) else NoMods
 
       val td = TypeDef(Modifiers(), name, tparams, typeDef)
-      
+
       val fixClassTypeName = if (tparams.isEmpty)
         Ident(TypeName(fixClassName(name, enclName)))
       else
@@ -489,11 +495,11 @@ object virtualContext {
 
       if (!(isAbstract(mods)))
         DefDef(Modifiers(), TermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), termNames.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
-          td :: 
+          td ::
           ClassDef(fixMods, TypeName(fixClassName(name, enclName)), tparams, Template(classParents, noSelfType, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
       else
         // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
-        List(td, ClassDef(fixMods, TypeName(fixClassName(name, enclName)), tparams, Template(classParents, noSelfType, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides))) 
+        List(td, ClassDef(fixMods, TypeName(fixClassName(name, enclName)), tparams, Template(classParents, noSelfType, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
     }
 
     def finalClassBodyContainsVCClass(body: List[Tree], name: String) = {
