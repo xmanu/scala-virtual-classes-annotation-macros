@@ -1,6 +1,6 @@
 package VirtualClasses
 
-import scala.reflect.macros.Context
+import scala.reflect.macros.whitebox.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 import scala.collection.mutable.HashMap
@@ -36,11 +36,11 @@ object virtualContext {
 
     val volatileFixMap: scala.collection.mutable.HashMap[String, String] = new scala.collection.mutable.HashMap()
 
-    lazy val noParameterConstructor = q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }""" //DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+    lazy val noParameterConstructor = q"""def ${termNames.CONSTRUCTOR}() = { super.${termNames.CONSTRUCTOR}(); () }""" //DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
     lazy val noParameterTraitConstructor = DefDef(Modifiers(), TermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
-      DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+      DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }), TypeTree(), Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY), termNames.CONSTRUCTOR), List())), Literal(Constant(()))))
     }
 
     def isVirtualClass(mods: c.universe.Modifiers) = {
@@ -56,7 +56,7 @@ object virtualContext {
     }
 
     def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualClass.toString) && s.isType)
+      computeType(parent).members.exists(s => s.name.decodedName.toString.startsWith(virtualClass.toString) && s.isType)
     }
 
     def isVCInBodies(name: TypeName)(implicit vcc: VCContext) = {
@@ -125,9 +125,9 @@ object virtualContext {
     }
 
     def getClassMixinsInParent(name: TypeName, parent: TypeName) = {
-      val tpt = Select(Ident(parent.toTermName), TypeName(finalClassName(parent.toString)))
+      val tpt = Select(Ident(parent.toTermName), TypeName(finalClassName(parent)))
       val tp = computeType(tpt)
-      val fixClassTp = tp.declaration(TypeName(fixClassName(name, parent)))
+      val fixClassTp = tp.decl(TypeName(fixClassName(name, parent)))
       if (tp != NoType && tp.baseClasses.length > 0 && fixClassTp.isClass) {
         fixClassTp.asClass.baseClasses.drop(1).dropRight(2).map(bc => bc.name.toTypeName)
       } else
@@ -151,8 +151,8 @@ object virtualContext {
         }) ++ vcc.parents.flatMap(getClassMixinsInParent(n, _))
       } ++ currentPart(name)).distinct.reverse.flatMap { n =>
         // check if we missed some traits which may have been overriden in the own family...
-        if (isVCInBodies(getNameFromSub(n.toString)))
-          List(TypeName(virtualTraitName(getNameFromSub(n.toString), vcc.enclName)), n)
+        if (isVCInBodies(TypeName(getNameFromSub(n.toString))))
+          List(TypeName(virtualTraitName(TypeName(getNameFromSub(n.toString)), vcc.enclName)), n)
         else List(n)
       }.distinct
     }
@@ -166,7 +166,7 @@ object virtualContext {
       val Expr(Block(stats, Apply(TypeApply(someValueFun, _), someTypeArgs))) = someValueOfTypeString
 
       val someValueOfGivenType = Block(stats, Apply(TypeApply(someValueFun, List(typeTree)), someTypeArgs))
-      val someValueOfGivenTypeChecked = c.typeCheck(someValueOfGivenType)
+      val someValueOfGivenTypeChecked = c.typecheck(someValueOfGivenType)
 
       someValueOfGivenTypeChecked.tpe
     }
@@ -176,7 +176,7 @@ object virtualContext {
         if (tpt.tpe != null) {
           tpt.tpe
         } else {
-          val calculatedType = c.typeCheck(tpt.duplicate, silent = true, withMacrosDisabled = false).tpe
+          val calculatedType = c.typecheck(tpt.duplicate, silent = true, withMacrosDisabled = false).tpe
           val result = if (tpt.tpe == null) calculatedType else tpt.tpe
 
           if (result == NoType) {
@@ -245,7 +245,7 @@ object virtualContext {
       //if (types.length == 1)
       //  types(0)
       //else
-      CompoundTypeTree(Template(tq"""scala.AnyRef""" :: types, emptyValDef, List()))
+      CompoundTypeTree(Template(tq"""scala.AnyRef""" :: types, noSelfType, List()))
     }
 
     def getNameFromSub(name: String) = name.takeRight(name.length - name.lastIndexOf("$") - 1)
@@ -275,9 +275,9 @@ object virtualContext {
 
     def parentContains(parent: String, name: String) = {
       try {
-        val tpt = Select(Ident(TermName(parent)), TypeName(finalClassName(parent)))
+        val tpt = Select(Ident(TermName(parent)), TypeName(finalClassName(TypeName(parent))))
         val tp = computeType(tpt)
-        val res = tp.declarations.exists(s => s.name.toString == name)
+        val res = tp.decls.exists(s => s.name.toString == name)
         res
       } catch {
         case e: Throwable => e.printStackTrace(); false
@@ -304,7 +304,7 @@ object virtualContext {
     }
 
     def getTypeApplied(name: TypeName, bodies: List[Tree]) = {
-      val typeParams = getTypeParams(getNameFromSub(name.toString), bodies)
+      val typeParams = getTypeParams(TypeName(getNameFromSub(name.toString)), bodies)
       if (typeParams.isEmpty || typeParams.get.isEmpty)
         Ident(name)
       else
@@ -313,7 +313,7 @@ object virtualContext {
 
     def mapInheritanceRelation(inheritRel: List[String], bodies: List[Tree]) = {
       val inheritRelMapped = inheritRel.map(s =>
-        getTypeApplied(s, bodies))
+        getTypeApplied(TypeName(s), bodies))
       inheritRelMapped
     }
 
@@ -321,7 +321,7 @@ object virtualContext {
       getVCClassesSymbols(getParentNameFromSub(traitName.toString))
         .filter(s => s.isClass && s.name == traitName)
         .flatMap(s =>
-          s.asClass.toType.declarations
+          s.asClass.toType.decls
             .filter(s => s.isMethod && !s.asMethod.isConstructor && !s.isDeferred)
             .map(_.name.toString)
             .filter(s => !s.endsWith("_$eq")))
@@ -332,7 +332,7 @@ object virtualContext {
       getVCClassesSymbols(getParentNameFromSub(traitName.toString))
         .filter(s => s.isClass && s.name == traitName)
         .flatMap(s =>
-          s.asClass.toType.declarations
+          s.asClass.toType.decls
             .filter(s => s.isMethod && !s.asMethod.isConstructor && s.isDeferred)
             .map(_.name.toString)
             .filter(s => s.startsWith("volatileFix$")))
@@ -344,7 +344,7 @@ object virtualContext {
         t => t match {
           case cd @ ClassDef(mods, name, tparams, Template(parents, valDef, body)) if (isVirtualClass(mods) && name == cls) =>
             body.flatMap(b => b match {
-              case dd @ DefDef(mods, defName, tparams, vparamss, tpt, rhs) if (defName != nme.CONSTRUCTOR && (!noAbstract || !mods.hasFlag(DEFERRED))) => {
+              case dd @ DefDef(mods, defName, tparams, vparamss, tpt, rhs) if (defName != termNames.CONSTRUCTOR && (!noAbstract || !mods.hasFlag(DEFERRED))) => {
                 List(defName.toString)
               }
               case _ => List()
@@ -363,9 +363,9 @@ object virtualContext {
         p =>
           val p_parent = getParentNameFromSub(p)
           val members_in_p = if (p_parent != enclName.toString) {
-            declsInVCTrait(p)
+            declsInVCTrait(TypeName(p))
           } else {
-            membersOf(getNameFromSub(p), bodies, true)
+            membersOf(TypeName(getNameFromSub(p)), bodies, true)
           }
           members_in_p.foreach { m =>
             if (!seen.contains(m))
@@ -391,7 +391,7 @@ object virtualContext {
       if (factorySym == NoSymbol)
         List()
       else {
-        val params = factorySym.asMethod.paramss.head
+        val params = factorySym.asMethod.paramLists.head
         params.map {
           s => (s.name.toTermName, s.typeSignature.typeSymbol.name.toTypeName)
         }
@@ -404,7 +404,7 @@ object virtualContext {
       body.foreach(b =>
         b match {
           case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods) && isAbstract(mods)) =>
-            volatileFixMap.put(name.toString, c.fresh("volatileFix$"))
+            volatileFixMap.put(name.toString, c.freshName("volatileFix$"))
           case _ => ;
         })
 
@@ -438,19 +438,19 @@ object virtualContext {
             val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
-              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
+              parents.flatMap(p => getConstructorParametersInParent(name, TypeName(getNameFromTree(p)))).distinct
 
             val vparamss = List(
               constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
             val b = List(
-              TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), TermName("scala")), TypeName("Null")), typeDefInner)),
-              ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, classTmpl))
+              TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(termNames.ROOTPKG), TermName("scala")), TypeName("Null")), typeDefInner)),
+              ClassDef(Modifiers(ABSTRACT | TRAIT), TypeName(virtualTraitName(name, enclName)), tparams, classTmpl))
             if (parents.exists(p => parentIsVirtualClass(p, name)) || (isAbstract(mods)))
               b
             else
-              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(TermName("scala")), TypeName("AnyRef"))), emptyValDef,
-                List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
+              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(TermName("scala")), TypeName("AnyRef"))), noSelfType,
+                List(DefDef(Modifiers(), termNames.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(typeNames.EMPTY), typeNames.EMPTY), termNames.CONSTRUCTOR), List())), Literal(Constant(())))),
                   DefDef(Modifiers(), TermName("apply"), List(), vparamss, TypeTree(), Apply(Ident(TermName(factoryName(name))), constructorParameters.map { case (name, tpe) => Ident(name) }))) // TODO: implement unapply method
                   )) ::
                 DefDef(Modifiers(DEFERRED), TermName(factoryName(name)), tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
@@ -464,7 +464,7 @@ object virtualContext {
       val bodyCompletion = toCompleteFromParents.map { name =>
         val typeDef = getTypeBounds(TypeName(name), getParentsInParents(TypeName(name)))
 
-        TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), TermName("scala")), TypeName("Null")), typeTree(typeDef.map(Ident(_)))))
+        TypeDef(Modifiers(DEFERRED), TypeName(name), List(), TypeBoundsTree(Select(Select(Ident(termNames.ROOTPKG), TermName("scala")), TypeName("Null")), typeTree(typeDef.map(Ident(_)))))
       }
 
       bodyTransform ++ bodyCompletion
@@ -488,12 +488,12 @@ object virtualContext {
         AppliedTypeTree(Ident(TypeName(fixClassName(name, enclName))), getTypeNames(tparams).map(t => Ident(t)))
 
       if (!(isAbstract(mods)))
-        DefDef(Modifiers(), TermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
+        DefDef(Modifiers(), TermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), termNames.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
           td :: 
-          ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
+          ClassDef(fixMods, TypeName(fixClassName(name, enclName)), tparams, Template(classParents, noSelfType, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
       else
         // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
-        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides))) 
+        List(td, ClassDef(fixMods, TypeName(fixClassName(name, enclName)), tparams, Template(classParents, noSelfType, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides))) 
     }
 
     def finalClassBodyContainsVCClass(body: List[Tree], name: String) = {
@@ -520,9 +520,9 @@ object virtualContext {
 
             val classInner = getClassMixins(name, vc_parents.map(p => TypeName(getNameFromTree(p)))).map(_.toString) //getInheritanceTreeComplete(body, name, enclName, parents)
 
-            val classAdditions = classInner.flatMap(p => if (!classInner.contains(virtualTraitName(getNameFromSub(p.toString), enclName)) &&
-              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)) && isVC(p))
-              List(virtualTraitName(getNameFromSub(p.toString), enclName))
+            val classAdditions = classInner.flatMap(p => if (!classInner.contains(virtualTraitName(TypeName(getNameFromSub(p.toString)), enclName)) &&
+              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)) && isVC(TypeName(p)))
+              List(virtualTraitName(TypeName(getNameFromSub(p.toString)), enclName))
             else
               List())
             val classParents = mapInheritanceRelation((classInner ++ classAdditions).distinct, body)
@@ -532,7 +532,7 @@ object virtualContext {
             val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
-              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
+              parents.flatMap(p => getConstructorParametersInParent(name, TypeName(getNameFromTree(p)))).distinct
 
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc, constructorParameters)
 
@@ -546,25 +546,25 @@ object virtualContext {
 
         val classParents = getClassMixins(TypeName(name), getParentsInParents(TypeName(name))).map(Ident(_))
 
-        val mods = if (parents.exists(p => parentContains(p.toString, factoryName(name))))
+        val mods = if (parents.exists(p => parentContains(p.toString, factoryName(TypeName(name)))))
           Modifiers()
         else
           Modifiers(ABSTRACT)
 
-        val nc = nameClashesForVCClass(name, classParents, enclName, body)
-        makeFinalVirtualClassPart(name, enclName, mods, typeTree(typeDef), List(), classParents, nc, getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => getParentVCClasses(getNameFromTree(p)).contains(name)).head)))
+        val nc = nameClashesForVCClass(TypeName(name), classParents, enclName, body)
+        makeFinalVirtualClassPart(TypeName(name), enclName, mods, typeTree(typeDef), List(), classParents, nc, getConstructorParametersInParent(TypeName(name), TypeName(getNameFromTree(parents.filter(p => getParentVCClasses(getNameFromTree(p)).contains(name)).head))))
       }
-      val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
+      val tmpl = Template(List(Ident(enclName)), noSelfType, finalClassBody ++ bodyCompletion)
 
-      ClassDef(Modifiers(), finalClassName(enclName), List(), tmpl)
+      ClassDef(Modifiers(), TypeName(finalClassName(enclName)), List(), tmpl)
     }
 
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
           val classDef = ClassDef(Modifiers(ABSTRACT | TRAIT), name, tparams, Template(parents, ValDef(Modifiers(PRIVATE), TermName("outer"), TypeTree(), EmptyTree), transformBody(body, name, parents)))
-          val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents) :: DefDef(Modifiers(), TermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(TypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
-          val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), emptyValDef, newObjectBody)
+          val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents) :: DefDef(Modifiers(), TermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(TypeName(finalClassName(name)))), termNames.CONSTRUCTOR), List())) :: Nil
+          val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), noSelfType, newObjectBody)
           val newObjectDef = ModuleDef(Modifiers(), name.toTermName, newObjectTemplate)
           Block(List(classDef, newObjectDef), Literal(Constant()))
       }
@@ -574,7 +574,7 @@ object virtualContext {
 }
 
 class virtualContext extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro virtualContext.impl
+  def macroTransform(annottees: Any*): Any = macro virtualContext.impl
 }
 
 object virtualMacro {
@@ -605,5 +605,5 @@ object printMacro {
 }
 
 class print extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro printMacro.impl
+  def macroTransform(annottees: Any*): Any = macro printMacro.impl
 }
