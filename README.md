@@ -3,6 +3,8 @@ scala-virtual-classes-annotaion-macros
 
 Virtual Classes for Scala implemented as annotation macros
 
+[![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.png?branch=master)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
+
 Usage:
 -------
 1. Check out the repository
