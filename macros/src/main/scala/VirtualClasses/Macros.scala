@@ -11,6 +11,7 @@ object virtualContext {
     import c.universe._
     import Flag._
 
+    ////////// Helper
     implicit class SymbolHelper(s: c.universe.Symbol) {
       def isDeferred: Boolean = {
         s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].hasFlag(scala.reflect.internal.Flags.DEFERRED)
@@ -23,7 +24,7 @@ object virtualContext {
     // introduce paramaccessor as flag because macros don't provide it.
     val PARAMACCESSOR = (1 << 29).toLong.asInstanceOf[FlagSet]
 
-    case class VCContext(val enclName: TypeName, val parents: List[TypeName], val bodies: List[Tree])
+    ///////////
 
     def virtualTraitName(className: TypeName, enclClassName: TypeName) =
       "VC_TRAIT$" + enclClassName + "$" + className
@@ -50,31 +51,15 @@ object virtualContext {
     def isAbstract(mods: c.universe.Modifiers) =
       (mods.hasFlag(ABSTRACT) || mods.hasFlag(ABSOVERRIDE))
 
+    def isOverriden(mods: c.universe.Modifiers) =
+      (mods.hasFlag(OVERRIDE) || mods.hasFlag(ABSOVERRIDE))
+
     def isOverridenVirtualClass(mods: c.universe.Modifiers) = {
-      mods.annotations.foldRight(false)((a, b) => b || (a.toString == "new virtual()")) &&
-        (mods.hasFlag(OVERRIDE) || mods.hasFlag(ABSOVERRIDE))
+      isVirtualClass(mods) && isOverriden(mods)
     }
 
-    def parentIsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).members.exists(s => s.name.decoded.startsWith(virtualClass.toString) && s.isType)
-    }
-
-    def isVCInBodies(name: TypeName)(implicit vcc: VCContext) = {
-      vcc.bodies.exists(b => b match {
-        case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
-        case _ => false
-      })
-    }
-
-    def isVC(name: TypeName)(implicit vcc: VCContext) = {
-      isVCInBodies(name)(vcc) || vcc.parents.exists(p => parentIsVirtualClass(Ident(p), name))
-    }
-
-    def findInBodies(name: TypeName)(implicit vcc: VCContext) = {
-      vcc.bodies.find(b => b match {
-        case ClassDef(_, n, _, _) => name == n
-        case _ => false
-      })
+    def parentContainsVirtualClass(parent: Tree, virtualClass: TypeName) = {
+      computeType(parent).declarations.exists(s => s.name.decoded == virtualTraitName(virtualClass, getNameFromTree(parent)))
     }
 
     def getParentsInParent(parent: TypeName, name: TypeName) = {
@@ -89,10 +74,6 @@ object virtualContext {
         .filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object"))
     }
 
-    def getParentsInParents(name: TypeName)(implicit vcc: VCContext) = {
-      vcc.parents.flatMap(p => getParentsInParent(p, name))
-    }
-
     def getTraitParentsInParent(parent: TypeName, name: TypeName) = {
       val hi = computeType(Ident(parent)).member(name).typeSignature.asInstanceOf[scala.reflect.internal.Types#Type].bounds.hi
       val tpe_parents = hi.parents.map(_.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
@@ -103,27 +84,6 @@ object virtualContext {
         .filter(_.toString.startsWith("VC_TRAIT$"))
     }
 
-    def getTraitParentsInParents(name: TypeName)(implicit vcc: VCContext) = {
-      vcc.parents.flatMap(p => getTraitParentsInParent(p, name))
-    }
-
-    def getVCParents(name: TypeName, parents: List[TypeName])(implicit vcc: VCContext) = {
-      (parents.filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object")) ++ getParentsInParents(name)(vcc)).distinct
-    }
-
-    def currentPart(name: TypeName)(implicit vcc: VCContext) = {
-      getTraitParentsInParents(name) ++
-        (if (findInBodies(name).isDefined && isVC(name))
-          List(newTypeName(virtualTraitName(name, vcc.enclName)))
-        else
-          List())
-    }
-
-    def getTypeBounds(name: TypeName, parents: List[TypeName])(implicit vcc: VCContext) = {
-      (getVCParents(name, parents)(vcc) ++
-        currentPart(name)).distinct
-    }
-
     def getClassMixinsInParent(name: TypeName, parent: TypeName) = {
       val tpt = Select(Ident(parent.toTermName), newTypeName(finalClassName(parent.toString)))
       val tp = computeType(tpt)
@@ -132,29 +92,6 @@ object virtualContext {
         fixClassTp.asClass.baseClasses.drop(1).dropRight(2).map(bc => bc.name.toTypeName)
       } else
         Nil
-    }
-
-    def getClassMixins(name: TypeName, parents: List[TypeName])(implicit vcc: VCContext): List[TypeName] = {
-      (getVCParents(name, parents)(vcc).flatMap { n =>
-        (findInBodies(n) match {
-          case Some(b) => b match {
-            case ClassDef(mods, _, _, Template(parents, _, _)) =>
-              // we have defined this parent in this context so recurse...
-              if (isVC(n))
-                getClassMixins(n, parents.map(t => newTypeName(getNameFromTree(t))))(vcc)
-              else
-                List(n)
-          }
-          case None =>
-            // we haven't defined this parent in this context so just find the right mixins in the fix class in our virtualContext's parents...
-            if (isVC(n)) List() else List(n)
-        }) ++ vcc.parents.flatMap(getClassMixinsInParent(n, _))
-      } ++ currentPart(name)).distinct.reverse.flatMap { n =>
-        // check if we missed some traits which may have been overriden in the own family...
-        if (isVCInBodies(getNameFromSub(n.toString)))
-          List(newTypeName(virtualTraitName(getNameFromSub(n.toString), vcc.enclName)), n)
-        else List(n)
-      }.distinct
     }
 
     def typeCheckExpressionOfType(typeTree: Tree): Type = {
@@ -199,7 +136,7 @@ object virtualContext {
       })
 
       val volatileFixesIntro: List[Tree] = {
-        if (isAbstract(mods) && !parents.exists(p => parentIsVirtualClass(Ident(p), name)))
+        if (isAbstract(mods) && !parents.exists(p => parentContainsVirtualClass(Ident(p), name)))
           List({
             val volatileFixName = newTermName(volatileFixMap.get(name.toString).get)
             DefDef(Modifiers(DEFERRED), volatileFixName, List(), List(List()), tq"""Int""", EmptyTree)
@@ -277,7 +214,7 @@ object virtualContext {
       try {
         val tpt = Select(Ident(newTermName(parent)), newTypeName(finalClassName(parent)))
         val tp = computeType(tpt)
-        val res = tp.declarations.exists(s => s.name.toString == name)
+        val res = tp.members.exists(s => s.name.toString == name)
         res
       } catch {
         case e: Throwable => e.printStackTrace(); false
@@ -399,7 +336,7 @@ object virtualContext {
     }
 
     def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
-      implicit val vcc = new VCContext(enclName, parents.map(p => newTypeName(getNameFromTree(p))), body)
+      val vcc = new VCContext(enclName, parents.map(p => newTypeName(getNameFromTree(p))), body)
 
       body.foreach(b =>
         b match {
@@ -417,16 +354,16 @@ object virtualContext {
             if (!tparams.isEmpty)
               c.error(cd.pos, "Type parameters are currently not supported.")
 
-            if (!isOverridenVirtualClass(mods) && parents.exists(t => parentIsVirtualClass(t, name)))
-              c.error(cd.pos, s"The following parents of the class family already declare a class with the name $name: ${parents.filter(t => parentIsVirtualClass(t, name)).mkString(", ")}.\nTo override functionality, declare the virtual class as overriden.")
+            if (!isOverridenVirtualClass(mods) && parents.exists(t => parentContainsVirtualClass(t, name)))
+              c.error(cd.pos, s"The following parents of the class family already declare a class with the name $name: ${parents.filter(t => parentContainsVirtualClass(t, name)).mkString(", ")}.\nTo override functionality, declare the virtual class as overriden.")
 
             val Template(vc_parents, _, vc_body) = impl
 
             if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty)
               c.error(cd.pos, "Overriden virtual classes cannot define constructor parameters.")
 
-            val inheritRel = getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
-            val classInner = getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
+            val inheritRel = vcc.getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString)
+            val classInner = vcc.getClassMixins(name).map(_.toString)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
             val typeDefInner: c.universe.Tree = //if (vcc.parents.length == 0)
               typeTree(inheritRelMapped)
@@ -446,7 +383,7 @@ object virtualContext {
             val b = List(
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName), tparams, classTmpl))
-            if (parents.exists(p => parentIsVirtualClass(p, name)) || (isAbstract(mods)))
+            if (vcc.getAllBaseClasses.exists(p => parentContainsVirtualClass(Ident(p), name)) || (isAbstract(mods)))
               b
             else
               ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))), emptyValDef,
@@ -462,7 +399,7 @@ object virtualContext {
       val toCompleteFromParents = parents.flatMap(p => getParentVCClasses(getNameFromTree(p))).filter(!finalClassBodyContainsVCClass(body, _)).distinct
 
       val bodyCompletion = toCompleteFromParents.map { name =>
-        val typeDef = getTypeBounds(newTypeName(name), getParentsInParents(newTypeName(name)))
+        val typeDef = vcc.getTypeBounds(newTypeName(name), vcc.getParentsInParents(newTypeName(name)))
 
         TypeDef(Modifiers(DEFERRED), name, List(), TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeTree(typeDef.map(Ident(_)))))
       }
@@ -474,14 +411,14 @@ object virtualContext {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
 
-      val clashOverrides = List()//nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
+      val clashOverrides = List() //nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       val fcn = newTypeName(fixClassName(name, enclName))
 
       val fixMods = if (isAbstract(mods)) Modifiers(ABSTRACT) else NoMods
 
       val td = TypeDef(Modifiers(), name, tparams, typeDef)
-      
+
       val fixClassTypeName = if (tparams.isEmpty)
         Ident(newTypeName(fixClassName(name, enclName)))
       else
@@ -489,11 +426,11 @@ object virtualContext {
 
       if (!(isAbstract(mods)))
         DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
-          td :: 
+          td ::
           ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
       else
         // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
-        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides))) 
+        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
     }
 
     def finalClassBodyContainsVCClass(body: List[Tree], name: String) = {
@@ -511,21 +448,26 @@ object virtualContext {
     }
 
     def finalClass(enclName: TypeName, body: List[c.universe.Tree], parents: List[Tree]) = {
-      implicit val vcc = new VCContext(enclName, parents.map(p => newTypeName(getNameFromTree(p))), body)
+      val vcc = new VCContext(enclName, parents.map(p => newTypeName(getNameFromTree(p))), body)
 
       val finalClassBody: List[c.universe.Tree] = noParameterConstructor :: body.flatMap(b =>
         b match {
           case ClassDef(mods, name, tparams, Template(vc_parents, _, vc_body)) if (isVirtualClass(mods)) =>
-            val typeDefInner = typeTree(getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(Ident(_))) //typeTree(mapInheritanceRelation(getInheritanceRelation(body, vc_parents, name, parents, enclName), body))
+            val clasLin = vcc.getVirtualClassLinearization(name)
+            val classInner = vcc.getClassMixins(name).map(_.toString)
+            println(s"classInner for $name: $classInner")
 
-            val classInner = getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString) //getInheritanceTreeComplete(body, name, enclName, parents)
+            val typeDefInner = typeTree(vcc.getTypeBounds(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(Ident(_))) //typeTree(mapInheritanceRelation(getInheritanceRelation(body, vc_parents, name, parents, enclName), body))
+
+            //val classInnerOld = vcc.getClassMixins(name, vc_parents.map(p => newTypeName(getNameFromTree(p)))).map(_.toString) //getInheritanceTreeComplete(body, name, enclName, parents)
 
             val classAdditions = classInner.flatMap(p => if (!classInner.contains(virtualTraitName(getNameFromSub(p.toString), enclName)) &&
-              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)) && isVC(p))
+              finalClassBodyContainsVCClass(body, getNameFromSub(p.toString)) && vcc.isVC(p))
               List(virtualTraitName(getNameFromSub(p.toString), enclName))
             else
               List())
-            val classParents = mapInheritanceRelation((classInner ++ classAdditions).distinct, body)
+            val classParents = mapInheritanceRelation((classInner /*++ classAdditions*/ ).distinct, body)
+            println(s"classParents for $name: $classParents")
 
             val nc = nameClashesForVCClass(name, classParents, enclName, body)
 
@@ -542,11 +484,11 @@ object virtualContext {
       val toCompleteFromParents = parents.flatMap(p => getParentVCClasses(getNameFromTree(p))).filter(!finalClassBodyContainsVCClass(finalClassBody, _)).distinct
 
       val bodyCompletion = toCompleteFromParents.flatMap { name =>
-        val typeDef = getTypeBounds(newTypeName(name), getParentsInParents(newTypeName(name))).map(Ident(_))
+        val typeDef = vcc.getTypeBounds(newTypeName(name), vcc.getParentsInParents(newTypeName(name))).map(Ident(_))
 
-        val classParents = getClassMixins(newTypeName(name), getParentsInParents(newTypeName(name))).map(Ident(_))
+        val classParents = vcc.getClassMixins(newTypeName(name)).map(Ident(_))
 
-        val mods = if (parents.exists(p => parentContains(p.toString, factoryName(name))))
+        val mods = if (vcc.getAllBaseClasses.exists(p => parentContains(p.toString, factoryName(name))))
           Modifiers()
         else
           Modifiers(ABSTRACT)
@@ -559,6 +501,91 @@ object virtualContext {
       ClassDef(Modifiers(), finalClassName(enclName), List(), tmpl)
     }
 
+    case class VCContext(val enclName: TypeName, val parents: List[TypeName], val bodies: List[Tree]) {
+      def isVCInBodies(name: TypeName) = {
+        bodies.exists(b => b match {
+          case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
+          case _ => false
+        })
+      }
+
+      def isVC(name: TypeName) = {
+        isVCInBodies(name) || parents.exists(p => parentContainsVirtualClass(Ident(p), name))
+      }
+
+      def findClassInBodies(name: TypeName) = {
+        bodies.find(b => b match {
+          case ClassDef(_, n, _, _) => name == n
+          case _ => false
+        })
+      }
+
+      def currentPart(name: TypeName) = {
+        getTraitParentsInParents(name) ++
+          (if (findClassInBodies(name).isDefined && isVC(name))
+            List(newTypeName(virtualTraitName(name, enclName)))
+          else
+            List())
+      }
+
+      def getTypeBounds(name: TypeName, parents: List[TypeName]) = {
+        (getVCParents(name, parents) ++
+          currentPart(name)).distinct
+      }
+
+      def getParentsInParents(name: TypeName) = {
+        this.parents.flatMap(p => getParentsInParent(p, name))
+      }
+
+      def getTraitParentsInParents(name: TypeName) = {
+        this.parents.flatMap(p => getTraitParentsInParent(p, name))
+      }
+
+      def getVCParents(name: TypeName, parents: List[TypeName]) = {
+        (parents.filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object")) ++ getParentsInParents(name)).distinct
+      }
+
+      lazy val getAllBaseClasses: List[TypeName] = (parents ++ parents.flatMap(p => computeType(Ident(p)).baseClasses).map(s => s.name.toTypeName)).distinct.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString))
+
+      def getBaseClassesInBodies(name: TypeName): List[TypeName] = {
+        bodies.flatMap { b =>
+          b match {
+            case ClassDef(_, n, _, Template(vc_parents, _, _)) if (n.toString == name.toString) => vc_parents.map(t => newTypeName(getNameFromTree(t)))
+            case _ => List()
+          }
+        }.filter(p => p.toString != "scala.AnyRef")
+      }
+
+      def getVirtualClassLinearization(name: TypeName): List[TypeName] = {
+        val parents = getBaseClassesInBodies(name)
+        val current = (parents ++ getAllBaseClasses.flatMap(p => getParentsInParent(p, name))).filter(n => n.toString != "scala.AnyRef").distinct
+        println(current.mkString(", "))
+        // TODO: class linearization has to be smarter than just using distinct...
+        val result = name :: current.flatMap(c => getVirtualClassLinearization(c)).map(_.toString).distinct.map(newTypeName(_))
+        println(result.mkString(", "))
+        println(s"Determined classlin for $name in $enclName: $result")
+        result
+      }
+
+      def getVCTraits(name: TypeName): List[TypeName] = {
+        val inParents = getAllBaseClasses.filter(p => parentContainsVirtualClass(Ident(p), name)).map(p => newTypeName(virtualTraitName(name, p)))
+        val result = if (findClassInBodies(name).isDefined) newTypeName(virtualTraitName(name, enclName)) :: inParents else inParents
+        println(s"getVCTraits($name) in $enclName: $result")
+        if (result.isEmpty)
+          List(name)
+        else
+          result
+      }
+
+      def getClassMixins(name: TypeName): List[TypeName] = {
+        println(s"getBaseClassesInBodies($name): ${getBaseClassesInBodies(name)}")
+        val result = getVirtualClassLinearization(name).flatMap(n => getVCTraits(n))
+        println(s"getClassMixinsNew: $result")
+        result
+      }
+
+    }
+
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
@@ -566,7 +593,7 @@ object virtualContext {
           val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents) :: DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(newTypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
           val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), emptyValDef, newObjectBody)
           val newObjectDef = ModuleDef(Modifiers(), name.toTermName, newObjectTemplate)
-          Block(List(classDef, newObjectDef), Literal(Constant()))
+          Block(List(classDef, newObjectDef), Literal(Constant(())))
       }
     }
     c.Expr[Any](result)
