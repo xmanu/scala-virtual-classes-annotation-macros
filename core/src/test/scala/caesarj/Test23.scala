@@ -32,6 +32,11 @@ class Test23 extends UnitSpec {
       "; " + resH + "; " + resI;
 
     System.out.println(result);
+    
+    resA should equal ("A.A, C.A, B.A")
+    resB should equal ("A.A, C.A, B.A, A.B, C.B")
+    resC should equal ("A.A, C.A, B.A, A.C, C.C, B.C")
+    resD should equal ("A.A, C.A, B.A, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D")
 
     result should equal (expectedResult)
   }

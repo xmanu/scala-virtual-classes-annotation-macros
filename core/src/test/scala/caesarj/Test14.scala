@@ -77,7 +77,7 @@ class Test14 extends UnitSpec {
 
   @virtual override class InnerB {
     // this should not be necessary!
-    override def queryE = super[VC_TRAIT$OuterB14$InnerA].queryE
+    override def queryE = super[VC_TRAIT$OuterA14$InnerB].queryE
 
     override def queryF = super.queryF + ", B.B.F";
 
