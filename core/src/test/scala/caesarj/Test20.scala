@@ -27,7 +27,17 @@ class Test20 extends UnitSpec {
     val result = resA + "; " + resB + "; " + resC + "; " + resD + "; " + resE + "; " + resF + "; " + resG +"; " + resH + "; " + resI;
 
     System.out.println(result);
-    result should equal(expectedResult);
+    
+    
+    resA should equal ("A.a")
+    resB should equal ("A.a, B.a")
+    resC should equal ("A.a, C.a")
+    resD should equal ("A.a, B.a, D.a")
+    resE should equal ("A.a, C.a, B.a")
+    resF should equal ("A.a, C.a, F.a")
+    resG should equal ("A.a, B.a, D.a, C.a")
+    resH should equal ("A.a, C.a, F.a, B.a, H.a")
+    resI should equal ("A.a, B.a, C.a, F.a, H.a, D.a")
   }
 }
 

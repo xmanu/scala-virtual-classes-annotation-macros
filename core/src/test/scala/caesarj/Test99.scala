@@ -20,13 +20,13 @@ class Test99 extends UnitSpec {
 }
 
 /*@virtualContext class Forest {
-  @virtual class Maple {}
-  @virtual class Cherry {}
-  @virtual class Locust {}
-  @virtual class Pine {}
-  @virtual class Dandellon {}
-  @virtual class Bird {}
-  @virtual class Woodman {}
+  @virtual class Maple
+  @virtual class Cherry
+  @virtual class Locust
+  @virtual class Pine
+  @virtual class Dandellon
+  @virtual class Bird
+  @virtual class Woodman
 }
 
 @virtualContext class EagleSubject extends Forest {
@@ -35,11 +35,11 @@ class Test99 extends UnitSpec {
   }
 
   @virtual class Nestable {
-    //var nestSafetyRating: Int = 0
+    var nestSafetyRating: Int = 0
   }
 
   @virtual class Predator {
-    //var rating: Int = 0
+    var rating: Int = 0
   }
 
   @virtual class NectarPlant extends Plant {

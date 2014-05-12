@@ -37,8 +37,13 @@ class Test23 extends UnitSpec {
     resB should equal ("A.A, C.A, B.A, A.B, C.B")
     resC should equal ("A.A, C.A, B.A, A.C, C.C, B.C")
     resD should equal ("A.A, C.A, B.A, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D")
-
-    result should equal (expectedResult)
+    resE should equal ("A.A, C.A, B.A, A.E")
+    resF should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F")
+    resG should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F, B.G")
+    resH should equal ("A.A, C.A, B.A, A.C, C.C, B.C, A.B, C.B, C.H")
+    resI should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F, D.I")
+    
+    //result should equal (expectedResult)
   }
 }
 
