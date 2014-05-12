@@ -487,7 +487,7 @@ object virtualContext {
         (getBaseClassesInBodies(name).filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object")) ++ getParentsInParents(name)).distinct
       }
 
-      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => {println(computeType(Ident(p)).baseClasses); computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName)}).reverse.distinct.reverse 
+      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => {/*println(computeType(Ident(p)).baseClasses);*/ computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName)}).reverse.distinct.reverse 
       //(parents.map(p => computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(s => s.name.toTypeName.toString)).foldRight(List[String]())((a, b) => getLin2(a, b))).map(newTypeName(_))
 
       lazy val toCompleteFromParents = parents.flatMap(p => getParentVCClasses(p.toString)).filter(!findClassInBodies(_).isDefined).distinct
@@ -505,10 +505,10 @@ object virtualContext {
         val parents = getBaseClassesInBodies(name)
         val current = (allBaseClasses.flatMap(p => getParentsInParent(p, name)) ++ parents.reverse).filter(n => n.toString != "scala.AnyRef").map(_.toString).distinct.map(newTypeName(_))
         // TODO: class linearization has to be smarter than just using distinct...
-        println(s"current: $current")
+        //println(s"current: $current")
         //val result = name :: current.map(c => getVirtualClassLinearization(c).map(_.toString)).foldRight(List[String]())((a,b) => getLin2(a, b)).map(newTypeName(_))
         val result = name :: current.flatMap(c => getVirtualClassLinearization(c)).reverse.distinct.reverse
-        println(s"getVirtualClassLinearization($name) in $enclName: $result")
+        //println(s"getVirtualClassLinearization($name) in $enclName: $result")
         result
       }
       
@@ -530,8 +530,8 @@ object virtualContext {
       def getVCTraits(name: TypeName): List[TypeName] = {
         val inParents = allBaseClasses.filter(p => parentContainsVirtualClass(Ident(p), name)).map(p => newTypeName(virtualTraitName(name, p)))
         val result = if (findClassInBodies(name).isDefined) newTypeName(virtualTraitName(name, enclName)) :: inParents else inParents
-        println(s"allBaseClasses: $allBaseClasses")
-        println(s"getVCTraits($name) in $enclName: $result")
+        //println(s"allBaseClasses: $allBaseClasses")
+        //println(s"getVCTraits($name) in $enclName: $result")
         if (result.isEmpty)
           List(name)
         else
@@ -540,7 +540,7 @@ object virtualContext {
 
       def getClassMixins(name: TypeName): List[TypeName] = {
         val result = getVirtualClassLinearization(name).reverse.flatMap(n => getVCTraits(n).reverse)
-        println(s"getClassMixins($name) in $enclName: $result")
+        //println(s"getClassMixins($name) in $enclName: $result")
         result
       }
 
