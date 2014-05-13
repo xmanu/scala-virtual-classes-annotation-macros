@@ -138,4 +138,3 @@ Current limitations:
 2. type parameters are not supported
 3. Virtual classes in virtual classes are not handled correctly
 4. Virtual case classes are not supported
-5. Linearization order for super class is incorrect.
