@@ -3,6 +3,10 @@ scala-virtual-classes-annotaion-macros
 
 Virtual Classes for Scala implemented as annotation macros
 
+master: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.png?branch=master)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
+
+2.10: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.png?branch=2.10)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
+
 Usage:
 -------
 1. Check out the repository
@@ -18,7 +22,7 @@ lazy val myproject: Project = Project(
 
 Syntax:
 --------
-- use `@virtualContext` to define a class family.
+- use `@family` to define a class family.
 - inside use `@virtual` to declare a class as virtual
 
 Example:
@@ -38,7 +42,7 @@ object ExprModelTest2 extends App {
   println(div.asInstanceOf[EvalTrait].eval)
 }
 
-@virtualContext class ExprModel {
+@family class ExprModel {
   @virtual abstract class Expr
 
   @virtual class Constant(_value: Int) extends Expr {
@@ -56,7 +60,7 @@ trait EvalTrait {
   def eval: Int
 }
 
-@virtualContext class ExprEval extends ExprModel {
+@family class ExprEval extends ExprModel {
   @virtual override abstract class Expr extends EvalTrait
 
   @virtual override class Constant {
@@ -72,7 +76,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprModelOp extends ExprModel {
+@family class ExprModelOp extends ExprModel {
   @virtual override abstract class BinExpr {
     def op: String
   }
@@ -84,7 +88,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprFormat extends ExprModelOp {
+@family class ExprFormat extends ExprModelOp {
   @virtual override abstract class Expr {
     def format: String
   }
@@ -98,7 +102,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprFormatPrePost extends ExprFormat {
+@family class ExprFormatPrePost extends ExprFormat {
   @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -115,7 +119,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
+@family class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
   @virtual class Div(val left: Expr, val right: Expr) extends BinExpr {
     def op = "/"
     def eval = left.eval / right.eval
