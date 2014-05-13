@@ -16,8 +16,7 @@ object ExprModelTest2 extends App {
 @virtualContext class ExprModel {
   @virtual abstract class Expr
 
-  @virtual class Constant(_value: Int) extends Expr {
-    var value: Int = _value
+  @virtual class Constant(var value: Int) extends Expr {
   }
 
   @virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr
