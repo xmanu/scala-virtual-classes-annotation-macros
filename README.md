@@ -3,9 +3,9 @@ scala-virtual-classes-annotaion-macros
 
 Virtual Classes for Scala implemented as annotation macros
 
-master: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.png?branch=master)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
+master: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.svg?branch=master)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
 
-2.10: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.png?branch=2.10)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
+2.10: [![Build Status](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros.svg?branch=2.10)](https://travis-ci.org/xmanu/scala-virtual-classes-annotation-macros)
 
 Usage:
 -------
