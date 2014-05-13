@@ -525,20 +525,6 @@ class family extends StaticAnnotation {
   def macroTransform(annottees: Any*) = macro family.impl
 }
 
-object virtualMacro {
-  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
-    import c.universe._
-    import Flag._
-    val result = {
-      annottees.map(_.tree).toList match {
-        case ClassDef(mods, name, tparams, impl) :: Nil =>
-          ClassDef(mods, name, tparams, impl)
-      }
-    }
-    c.Expr[Any](result)
-  }
-}
-
 class virtual extends StaticAnnotation
 
 object printMacro {
