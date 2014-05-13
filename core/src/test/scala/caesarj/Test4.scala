@@ -15,7 +15,7 @@ class Test4 extends UnitSpec {
   }
 }
 
-@virtualContext class AST {
+@family class AST {
 
   @virtual class Expression {
   }
@@ -28,7 +28,7 @@ class Test4 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class EvalAST extends AST {
+@family class EvalAST extends AST {
   @virtual override class Expression {
     def eval(): Int = 0
   }
@@ -45,7 +45,7 @@ class Test4 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class PrettyPrintAST extends AST {
+@family class PrettyPrintAST extends AST {
   @virtual override class Expression {
     def print() = ""
   }
@@ -60,13 +60,13 @@ class Test4 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class NegAST extends AST {
+@family class NegAST extends AST {
   @virtual class NegExpression(val expr: Expression) extends Expression {
   }
 }
 
 //=========================================================
-@virtualContext class EvalPrettyPrintNegAST extends EvalAST with PrettyPrintAST with NegAST {
+@family class EvalPrettyPrintNegAST extends EvalAST with PrettyPrintAST with NegAST {
   @virtual override class NegExpression {
     override def eval() = -expr.eval() 
     override def print() = s"-( ${expr.print()} )";

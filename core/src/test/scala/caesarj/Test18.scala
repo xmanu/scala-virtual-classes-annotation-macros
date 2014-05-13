@@ -21,7 +21,7 @@ class Test18 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA18 {
+@family class OuterA18 {
   private[this] val _a = "A.a";
 
   private[this] val _b = "A.b";
@@ -43,7 +43,7 @@ class Test18 extends UnitSpec {
   def queryG = _g;
 }
 
-@virtualContext class OuterB18 extends OuterA18 {
+@family class OuterB18 extends OuterA18 {
   private[this] val _b = "B.b";
 
   private[this] val _d = "B.d";
@@ -65,7 +65,7 @@ class Test18 extends UnitSpec {
   override def queryG = super.queryG + ", " + _g;
 }
 
-@virtualContext class OuterC18 extends OuterA18 {
+@family class OuterC18 extends OuterA18 {
   private[this] val _c = "C.c";
 
   private[this] val _d = "C.d";
@@ -87,7 +87,7 @@ class Test18 extends UnitSpec {
   override def queryG = super.queryG + ", " + _g;
 }
 
-@virtualContext class OuterD18 extends OuterC18 with OuterB18 {
+@family class OuterD18 extends OuterC18 with OuterB18 {
   private[this] val _f = "D.f";
 
   private[this] val _g = "D.g";

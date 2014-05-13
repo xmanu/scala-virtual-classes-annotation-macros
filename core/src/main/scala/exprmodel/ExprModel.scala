@@ -13,11 +13,10 @@ object ExprModelTest2 extends App {
   println(div.asInstanceOf[EvalTrait].eval) // 9
 }
 
-@virtualContext class ExprModel {
+@family class ExprModel {
   @virtual abstract class Expr
 
-  @virtual class Constant(_value: Int) extends Expr {
-    var value: Int = _value
+  @virtual class Constant(var value: Int) extends Expr {
   }
 
   @virtual abstract class BinExpr(val left: Expr, val right: Expr) extends Expr
@@ -31,7 +30,7 @@ trait EvalTrait {
   def eval: Int
 }
 
-@virtualContext class ExprEval extends ExprModel {
+@family class ExprEval extends ExprModel {
   @virtual override abstract class Expr extends EvalTrait
 
   @virtual override class Constant {
@@ -47,7 +46,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprModelOp extends ExprModel {
+@family class ExprModelOp extends ExprModel {
   @virtual override abstract class BinExpr {
     def op: String
   }
@@ -59,7 +58,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprFormat extends ExprModelOp {
+@family class ExprFormat extends ExprModelOp {
   @virtual override abstract class Expr {
     def format: String
   }
@@ -73,7 +72,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprFormatPrePost extends ExprFormat {
+@family class ExprFormatPrePost extends ExprFormat {
   @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -90,7 +89,7 @@ trait EvalTrait {
   }
 }
 
-@virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
+@family class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
   @virtual class Div(val left: Expr, val right: Expr) extends BinExpr {
     def op = "/"
     def eval = left.eval / right.eval

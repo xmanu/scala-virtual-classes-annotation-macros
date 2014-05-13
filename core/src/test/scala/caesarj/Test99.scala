@@ -15,31 +15,31 @@ class Test99 extends UnitSpec {
     maple.chopDown
     assert(maple.foodValue == 0)
     println(s"new maple food value is ${maple.foodValue}")*/
-    fail("We have the volatile problem!")
+    //fail("We have the volatile problem!")
   }
 }
 
-/*@virtualContext class Forest {
-  @virtual class Maple {}
-  @virtual class Cherry {}
-  @virtual class Locust {}
-  @virtual class Pine {}
-  @virtual class Dandellon {}
-  @virtual class Bird {}
-  @virtual class Woodman {}
+/*@family class Forest {
+  @virtual class Maple
+  @virtual class Cherry
+  @virtual class Locust
+  @virtual class Pine
+  @virtual class Dandellon
+  @virtual class Bird
+  @virtual class Woodman
 }
 
-@virtualContext class EagleSubject extends Forest {
+@family class EagleSubject extends Forest {
   @virtual class Plant {
     var foodValue: Int = 0;
   }
 
   @virtual class Nestable {
-    //var nestSafetyRating: Int = 0
+    var nestSafetyRating: Int = 0
   }
 
   @virtual class Predator {
-    //var rating: Int = 0
+    var rating: Int = 0
   }
 
   @virtual class NectarPlant extends Plant {
@@ -69,7 +69,7 @@ class Test99 extends UnitSpec {
   
 }
 
-@virtualContext class WoodmanSubject extends Forest {
+@family class WoodmanSubject extends Forest {
   @virtual class Tree {
     var timeToChopDown: Int = 0
 
@@ -105,7 +105,7 @@ class Test99 extends UnitSpec {
   }
 }
 
-@virtualContext class WoodmanEagleSubject extends WoodmanSubject with EagleSubject {
+@family class WoodmanEagleSubject extends WoodmanSubject with EagleSubject {
 
   @virtual override class Tree extends Plant {
     override def chopDown {

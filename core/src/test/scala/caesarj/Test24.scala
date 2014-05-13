@@ -16,7 +16,7 @@ class Test24 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA24 {
+@family class OuterA24 {
   @virtual class InnerA(val _name: String) {
     var arr: List[InnerA] = null;
     var name: String = _name;
@@ -39,7 +39,7 @@ class Test24 extends UnitSpec {
     }
 }
 
-@virtualContext class OuterB24 extends OuterA24 {
+@family class OuterB24 extends OuterA24 {
   @virtual override class InnerA {
     override def queryA = "B." + name + ", " + super.queryA;
   }

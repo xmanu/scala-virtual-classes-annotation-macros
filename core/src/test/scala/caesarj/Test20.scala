@@ -27,11 +27,21 @@ class Test20 extends UnitSpec {
     val result = resA + "; " + resB + "; " + resC + "; " + resD + "; " + resE + "; " + resF + "; " + resG +"; " + resH + "; " + resI;
 
     System.out.println(result);
-    result should equal(expectedResult);
+    
+    
+    resA should equal ("A.a")
+    resB should equal ("A.a, B.a")
+    resC should equal ("A.a, C.a")
+    resD should equal ("A.a, B.a, D.a")
+    resE should equal ("A.a, C.a, B.a")
+    resF should equal ("A.a, C.a, F.a")
+    resG should equal ("A.a, B.a, D.a, C.a")
+    resH should equal ("A.a, C.a, F.a, B.a, H.a")
+    resI should equal ("A.a, B.a, C.a, F.a, H.a, D.a")
   }
 }
 
-@virtualContext class OuterA20 {
+@family class OuterA20 {
   @virtual class InnerA {
     private val _a = "A.a";
 
@@ -39,7 +49,7 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB20 extends OuterA20 {
+@family class OuterB20 extends OuterA20 {
   @virtual override class InnerA {
     private val _a = "B.a";
 
@@ -47,7 +57,7 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterC20 extends OuterA20 {
+@family class OuterC20 extends OuterA20 {
   @virtual override class InnerA {
     private val _a = "C.a";
 
@@ -55,7 +65,7 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterD20 extends OuterB20 {
+@family class OuterD20 extends OuterB20 {
   @virtual override class InnerA {
     private val _a = "D.a";
 
@@ -63,11 +73,11 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterE20 extends OuterB20 with OuterC20 {
+@family class OuterE20 extends OuterB20 with OuterC20 {
 
 }
 
-@virtualContext class OuterF20 extends OuterA20 with OuterC20 {
+@family class OuterF20 extends OuterA20 with OuterC20 {
   @virtual override class InnerA {
     private val _a = "F.a";
 
@@ -75,11 +85,11 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterG20 extends OuterE20 with OuterD20 {
+@family class OuterG20 extends OuterE20 with OuterD20 {
 
 }
 
-@virtualContext class OuterH20 extends OuterE20 with OuterF20 {
+@family class OuterH20 extends OuterE20 with OuterF20 {
   @virtual override class InnerA {
     private val _a = "H.a";
 
@@ -87,6 +97,6 @@ class Test20 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterI20 extends OuterG20 with OuterH20 {
+@family class OuterI20 extends OuterG20 with OuterH20 {
 
 }

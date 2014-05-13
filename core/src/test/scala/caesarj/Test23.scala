@@ -32,12 +32,22 @@ class Test23 extends UnitSpec {
       "; " + resH + "; " + resI;
 
     System.out.println(result);
-
-    result should equal (expectedResult)
+    
+    resA should equal ("A.A, C.A, B.A")
+    resB should equal ("A.A, C.A, B.A, A.B, C.B")
+    resC should equal ("A.A, C.A, B.A, A.C, C.C, B.C")
+    resD should equal ("A.A, C.A, B.A, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D")
+    resE should equal ("A.A, C.A, B.A, A.E")
+    resF should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F")
+    resG should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F, B.G")
+    resH should equal ("A.A, C.A, B.A, A.C, C.C, B.C, A.B, C.B, C.H")
+    resI should equal ("A.A, C.A, B.A, A.E, A.C, C.C, B.C, A.B, C.B, A.D, C.D, B.D, A.F, B.F, D.I")
+    
+    //result should equal (expectedResult)
   }
 }
 
-@virtualContext class OuterA23 {
+@family class OuterA23 {
   @virtual class InnerA {
     def queryA = "A.A"
   }
@@ -63,7 +73,7 @@ class Test23 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB23 extends OuterA23 {
+@family class OuterB23 extends OuterA23 {
   @virtual override class InnerA {
     override def queryA = super.queryA + ", B.A";
   }
@@ -85,7 +95,7 @@ class Test23 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterC23 extends OuterA23 {
+@family class OuterC23 extends OuterA23 {
   @virtual override class InnerA {
     override def queryA = super.queryA + ", C.A";
   }
@@ -107,7 +117,7 @@ class Test23 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterD23 extends OuterB23 with OuterC23 {
+@family class OuterD23 extends OuterB23 with OuterC23 {
   @virtual class InnerI extends InnerF with InnerD {
     override def queryA = super.queryA + ", D.I";
   }

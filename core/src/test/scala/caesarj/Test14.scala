@@ -36,7 +36,7 @@ class Test14 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA14 {
+@family class OuterA14 {
   @virtual class InnerA {
     def queryA = "A.A.A";
 
@@ -62,7 +62,7 @@ class Test14 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB14 extends OuterA14 {
+@family class OuterB14 extends OuterA14 {
   @virtual override class InnerA {
     override def queryB = super.queryB + ", B.A.B";
 
@@ -77,7 +77,7 @@ class Test14 extends UnitSpec {
 
   @virtual override class InnerB {
     // this should not be necessary!
-    override def queryE = super[VC_TRAIT$OuterB14$InnerA].queryE
+    override def queryE = super[VC_TRAIT$OuterA14$InnerB].queryE
 
     override def queryF = super.queryF + ", B.B.F";
 

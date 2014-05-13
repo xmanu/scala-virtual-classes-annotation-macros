@@ -13,7 +13,7 @@ class Test2 extends UnitSpec {
   }
 }
 
-@virtualContext class G1 {
+@family class G1 {
   @virtual class E(val n1: String, val n2: String) {
     def isConnecting(n1: String, n2: String): Boolean = {
       this.n1.equals(n1) && this.n2.equals(n1);
@@ -28,7 +28,7 @@ class Test2 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class CG1 extends G1 {
+@family class CG1 extends G1 {
   @virtual override class E {
     var col: Color = null;
   }
