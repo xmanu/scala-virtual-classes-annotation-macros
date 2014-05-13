@@ -17,3 +17,10 @@ project/plugins/project/
 /Macro/.cache
 
 /core/.worksheet/
+
+/core/.classpath
+/core/.project
+/core/.settings/
+/macros/.classpath
+/macros/.project
+/macros/.settings/
