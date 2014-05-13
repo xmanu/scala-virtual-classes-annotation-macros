@@ -364,14 +364,14 @@ object family {
 
             val classParents = mapInheritanceRelation(classInner.distinct, body)
 
-            val nc = vcc.nameClashesForVCClass(name)
+            //val nc = vcc.nameClashesForVCClass(name)
 
             val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
               parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
 
-            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, nc, constructorParameters)
+            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, Map(), constructorParameters)
 
           case _ => Nil
         })
@@ -386,8 +386,8 @@ object family {
         else
           Modifiers(ABSTRACT)
 
-        val nc = vcc.nameClashesForVCClass(name)
-        makeFinalVirtualClassPart(name, enclName, mods, typeTree(typeDef), List(), classParents, nc, getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => vcc.getParentVCClasses(getNameFromTree(p)).contains(name)).head)))
+        //val nc = vcc.nameClashesForVCClass(name)
+        makeFinalVirtualClassPart(name, enclName, mods, typeTree(typeDef), List(), classParents, Map(), getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => vcc.getParentVCClasses(getNameFromTree(p)).contains(name)).head)))
       }
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
 
@@ -438,31 +438,6 @@ object family {
           .map(_.trim).distinct
       }
 
-      def nameClashesForVCClass(vc: TypeName): Map[String, TypeName] = {
-        var result = Map[String, TypeName]()
-        var seen = List[String]()
-
-        val classes = (virtualTraitName(vc, enclName) :: getClassMixins(vc).map(_.toString)).distinct
-
-        classes.foreach {
-          p =>
-            val p_parent = getParentNameFromSub(p)
-            val members_in_p = if (p_parent != enclName.toString) {
-              declsInVCTrait(p)
-            } else {
-              membersOf(getNameFromSub(p), bodies, true)
-            }
-            members_in_p.foreach { m =>
-              if (!seen.contains(m))
-                seen ::= m
-              else {
-                result += m -> newTypeName(p)
-              }
-            }
-        }
-        result
-      }
-
       def isVC(name: TypeName) = {
         isVCInBodies(name) || allBaseClasses.exists(p => parentContainsVirtualClass(Ident(p), name))
       }
@@ -511,21 +486,6 @@ object family {
         //println(s"getVirtualClassLinearization($name) in $enclName: $result")
         result
       }
-      
-      /*def getLin2(p1: List[String], p2: List[String]): List[String] = {
-        val res = (p1, p2) match {
-          case (List(), List()) => List()
-          case (p1, List()) => p1
-          case (List(), p2) => p2
-          case (p1, p2) if (p1.last == p2.last) => getLin2(p1.reverse.tail.reverse, p2.reverse.tail.reverse) ++ List(p2.last)
-          case (p1, p2) if (!p1.contains(p2.last) && !p2.contains(p1.last)) => getLin2(p1.reverse.tail.reverse, p2.reverse.tail.reverse) ++ List(p1.last, p2.last)
-          case (p1, p2) if (!p1.contains(p2.last)) => getLin2(p1, p2.reverse.tail.reverse) ++ List(p2.last)
-          case (p1, p2) if (!p2.contains(p1.last)) => getLin2(p1.reverse.tail.reverse, p2) ++ List(p1.last)
-          case (p1, p2) => getLin2(p1.filter(s => p2.last != s), p2.reverse.tail.reverse) ++ List(p2.last)
-        }
-        println(s"getLin2($p1,$p2) = $res")
-        res
-      }*/
 
       def getVCTraits(name: TypeName): List[TypeName] = {
         val inParents = allBaseClasses.filter(p => parentContainsVirtualClass(Ident(p), name)).map(p => newTypeName(virtualTraitName(name, p)))
