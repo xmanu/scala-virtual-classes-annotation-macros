@@ -19,7 +19,7 @@ class Test99 extends UnitSpec {
   }
 }
 
-/*@virtualContext class Forest {
+/*@family class Forest {
   @virtual class Maple
   @virtual class Cherry
   @virtual class Locust
@@ -29,7 +29,7 @@ class Test99 extends UnitSpec {
   @virtual class Woodman
 }
 
-@virtualContext class EagleSubject extends Forest {
+@family class EagleSubject extends Forest {
   @virtual class Plant {
     var foodValue: Int = 0;
   }
@@ -69,7 +69,7 @@ class Test99 extends UnitSpec {
   
 }
 
-@virtualContext class WoodmanSubject extends Forest {
+@family class WoodmanSubject extends Forest {
   @virtual class Tree {
     var timeToChopDown: Int = 0
 
@@ -105,7 +105,7 @@ class Test99 extends UnitSpec {
   }
 }
 
-@virtualContext class WoodmanEagleSubject extends WoodmanSubject with EagleSubject {
+@family class WoodmanEagleSubject extends WoodmanSubject with EagleSubject {
 
   @virtual override class Tree extends Plant {
     override def chopDown {

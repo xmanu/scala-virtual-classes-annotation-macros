@@ -8,7 +8,7 @@ object LongInheritance extends App {
   println(lih)
 }
 
-@virtualContext class LongOuterA {
+@family class LongOuterA {
   @virtual class LongInnerA
   @virtual class LongInnerB extends LongInnerA
   @virtual class LongInnerC extends LongInnerB
@@ -16,12 +16,12 @@ object LongInheritance extends App {
 }
 
 
-@virtualContext class LongOuterB extends LongOuterA {
+@family class LongOuterB extends LongOuterA {
   @virtual class LongInnerE extends LongInnerD
   @virtual class LongInnerF extends LongInnerE
 }
 
-@virtualContext class LongOuterC extends LongOuterB {
+@family class LongOuterC extends LongOuterB {
   @virtual class LongInnerG extends LongInnerF
   @virtual class LongInnerH extends LongInnerG
 }

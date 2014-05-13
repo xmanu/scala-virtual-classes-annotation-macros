@@ -31,7 +31,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprModel {
+@family class ExprModel {
   @virtual abstract class Expr {
   }
 
@@ -51,7 +51,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprEval extends ExprModel {
+@family class ExprEval extends ExprModel {
   @virtual override abstract class Expr {
     def eval: Int
   }
@@ -72,7 +72,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprModelOp extends ExprModel {
+@family class ExprModelOp extends ExprModel {
   @virtual override abstract class BinExpr {
     def op: String
   }
@@ -84,7 +84,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormat extends ExprModelOp {
+@family class ExprFormat extends ExprModelOp {
   @virtual override abstract class Expr {
     def format: String
   }
@@ -107,7 +107,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormatPrePost extends ExprFormat {
+@family class ExprFormatPrePost extends ExprFormat {
   @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -124,7 +124,7 @@ class ExprModelTests2 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
+@family class ExprEvalWithFormat extends ExprEval with ExprFormatPrePost {
   @virtual class Div extends BinExpr {
     def op = "/"
     def eval = left.eval / right.eval

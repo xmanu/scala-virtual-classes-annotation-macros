@@ -12,13 +12,13 @@ class Test1 extends UnitSpec {
   }
 }
 
-@virtualContext class A {
+@family class A {
   @virtual class X {
     def test: String = "a.X"
   }
 }
 
-@virtualContext class B extends A {
+@family class B extends A {
   @virtual override class X {
     override def test: String = super.test + "->b.X"
   }

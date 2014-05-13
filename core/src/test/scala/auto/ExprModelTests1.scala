@@ -45,7 +45,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprModel1 {
+@family class ExprModel1 {
   @virtual abstract class Expr {
     def eval: Int
   }
@@ -66,7 +66,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprModelChain1 extends ExprModel1 {
+@family class ExprModelChain1 extends ExprModel1 {
   @virtual abstract class Chain extends Expr {
     var chain: List[Expr] = null
   }
@@ -80,7 +80,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormat1 extends ExprModel1 {
+@family class ExprFormat1 extends ExprModel1 {
   @virtual override abstract class Expr {
     def format: String
   }
@@ -103,7 +103,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
+@family class ExprFormatChain extends ExprModelChain1 with ExprFormat1 {
   @virtual override abstract class Chain {
     def op: String
     def format: String = "(" + chain.mkString(" " + op + " ") + ")"
@@ -118,7 +118,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormatExtended1 extends ExprFormat1 {
+@family class ExprFormatExtended1 extends ExprFormat1 {
   @virtual class Sub(val left: Expr, val right: Expr) extends BinExpr {
     def op: String = "-"
     def eval: Int = left.eval - right.eval
@@ -133,7 +133,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormatPrePost1 extends ExprPrefixFormat1 {
+@family class ExprFormatPrePost1 extends ExprPrefixFormat1 {
   @virtual override abstract class Expr {
     def formatPre: String
     def formatPost: String
@@ -158,7 +158,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprPrefixFormat1 extends ExprFormat1 {
+@family class ExprPrefixFormat1 extends ExprFormat1 {
   @virtual override abstract class Expr {
     def formatPre: String
   }
@@ -172,7 +172,7 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprPostFixFormat1 extends ExprFormat1 {
+@family class ExprPostFixFormat1 extends ExprFormat1 {
   @virtual override abstract class Expr {
     def formatPost: String
   }
@@ -186,6 +186,6 @@ class ExprModelTests1 extends UnitSpec {
   }
 }
 
-@virtualContext class ExprFormatWithPrePost1 extends ExprFormat1 with ExprPrefixFormat1 with ExprPostFixFormat1 {
+@family class ExprFormatWithPrePost1 extends ExprFormat1 with ExprPrefixFormat1 with ExprPostFixFormat1 {
 
 }

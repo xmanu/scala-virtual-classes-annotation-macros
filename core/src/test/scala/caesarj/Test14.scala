@@ -36,7 +36,7 @@ class Test14 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA14 {
+@family class OuterA14 {
   @virtual class InnerA {
     def queryA = "A.A.A";
 
@@ -62,7 +62,7 @@ class Test14 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB14 extends OuterA14 {
+@family class OuterB14 extends OuterA14 {
   @virtual override class InnerA {
     override def queryB = super.queryB + ", B.A.B";
 

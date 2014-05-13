@@ -19,13 +19,13 @@ object BasicTest extends App {
   assert(superFooBar.foo == 42) // Without virtual classes, this would return 1
 }
 
-@virtualContext class Foo {
+@family class Foo {
   @virtual class Bar {
     def foo = 1
   }
 }
 
-@virtualContext class SubFoo extends Foo {
+@family class SubFoo extends Foo {
   @virtual override class Bar {
     override def foo = 42
   }

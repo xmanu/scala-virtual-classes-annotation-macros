@@ -5,7 +5,7 @@ import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
 import scala.collection.mutable.HashMap
 
-object virtualContext {
+object family {
 
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
     import c.universe._
@@ -561,8 +561,8 @@ object virtualContext {
   }
 }
 
-class virtualContext extends StaticAnnotation {
-  def macroTransform(annottees: Any*) = macro virtualContext.impl
+class family extends StaticAnnotation {
+  def macroTransform(annottees: Any*) = macro family.impl
 }
 
 object virtualMacro {

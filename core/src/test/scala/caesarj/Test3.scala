@@ -23,7 +23,7 @@ class Test3 extends UnitSpec {
   }
 }
 
-@virtualContext class G {
+@family class G {
   def doSomethingWithEdge(e: E) {
     println("G.doSomethingWithEdge");
   }
@@ -58,7 +58,7 @@ class Test3 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class CG extends G {
+@family class CG extends G {
   // test: signature should be same as in G
   override def doSomethingWithEdge(e: E) {
     super.doSomethingWithEdge(e);
@@ -80,14 +80,14 @@ class Test3 extends UnitSpec {
 }
 
 //=========================================================
-@virtualContext class WG extends G {
+@family class WG extends G {
   @virtual override class E {
     var w: Float = 0;
   }
 }
 
 //=========================================================
-@virtualContext class CWG extends CG with WG {
+@family class CWG extends CG with WG {
   @virtual override class E {
     def nowWeHaveItAll() {
       val w = this.w;

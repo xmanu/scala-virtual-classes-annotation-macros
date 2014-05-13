@@ -53,7 +53,7 @@ class Test16 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterA16 {
+@family class OuterA16 {
   @virtual class InnerA {
     def _a = "A.A.a";
 
@@ -103,7 +103,7 @@ class Test16 extends UnitSpec {
   }
 }
 
-@virtualContext class OuterB16 extends OuterA16 {
+@family class OuterB16 extends OuterA16 {
   @virtual override class InnerA {
     override def _b = "B.A.b";
 

@@ -11,7 +11,7 @@ object Test extends App {
   t2.test
 }
 
-@virtualContext
+@family
 class TestClass {
 
   @virtual
@@ -25,7 +25,7 @@ class TestClass {
   }*/
 }
 
-@virtualContext
+@family
 class TestClass2 extends TestClass {
   /*@virtual
   class Test {

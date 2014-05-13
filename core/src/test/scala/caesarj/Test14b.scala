@@ -9,14 +9,14 @@ class Test14b extends UnitSpec {
   }*/
 }
  
-/*@virtualContext class _synth {
+/*@family class _synth {
 	@virtual class Cat1 {}
 	@virtual class Cat2 {}
 	@virtual class Leaf1 {}
 }
 
 // [A, 0]
-@virtualContext class OuterA14b extends _synth
+@family class OuterA14b extends _synth
 {
 	// [A.C1, 0.C1]
 	@virtual override class Cat1
@@ -32,7 +32,7 @@ class Test14b extends UnitSpec {
 }
 
 // [B, A, 0]
-@virtualContext class OuterB14b extends _synth
+@family class OuterB14b extends _synth
 {
 	// [B.C2, O.C2]
 	@virtual override class Cat2
@@ -48,7 +48,7 @@ class Test14b extends UnitSpec {
 }
 
 // [C, A, B, 0]
-@virtualContext class OuterC14b extends OuterA14b with OuterB14b
+@family class OuterC14b extends OuterA14b with OuterB14b
 {
 	// [C.C2, O.C2, C.C1, A.C1, B.C1, O.C1]
 	@virtual override class Cat2 extends Cat1 {

@@ -35,7 +35,7 @@ trait InterfaceE {
   def queryE: String;
 }
 
-@virtualContext class OuterA9 {
+@family class OuterA9 {
   @virtual abstract class InnerB extends InterfaceE {
     def queryB = "A.B.B";
 
@@ -53,7 +53,7 @@ trait InterfaceE {
   }
 }
 
-@virtualContext class OuterB9 extends OuterA9 {
+@family class OuterB9 extends OuterA9 {
   @virtual override class InnerA extends InterfaceB {
     override def queryA = "B.A.A";
 
