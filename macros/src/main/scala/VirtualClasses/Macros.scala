@@ -12,28 +12,25 @@ object family {
     import Flag._
 
     ////////// Helper
-    implicit class SymbolHelper(s: c.universe.Symbol) {
-      def isDeferred: Boolean = {
-        s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].hasFlag(scala.reflect.internal.Flags.DEFERRED)
-      }
-      def isVal: Boolean = {
-        s.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isVal
-      }
-    }
 
     // introduce paramaccessor as flag because macros don't provide it.
     val PARAMACCESSOR = (1 << 29).toLong.asInstanceOf[FlagSet]
 
     ///////////
+    
+    def virtualTraitPrefix = "VC_TRAIT"
+    def factoryPrefix = "VC_NEW"
+    def fixClassPrefix = "VC_FIX"
+    def finalClassPrefix = "VC_FINAL"
 
     def virtualTraitName(className: TypeName, enclClassName: TypeName) =
-      "VC_TRAIT$" + enclClassName + "$" + className
+      virtualTraitPrefix + "$" + enclClassName + "$" + className
     def factoryName(className: TypeName) =
-      "VC_NEW$" + className
+      factoryPrefix + "$" + className
     def fixClassName(className: TypeName, enclClassName: TypeName) =
-      "VC_FIX$" + enclClassName + "$" + className
+      fixClassPrefix + "$" + enclClassName + "$" + className
     def finalClassName(className: TypeName) =
-      "VC_FINAL$" + className
+      finalClassPrefix + "$" + className
 
     val volatileFixMap: scala.collection.mutable.HashMap[String, String] = new scala.collection.mutable.HashMap()
 
@@ -70,7 +67,7 @@ object family {
         List(hi.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
       else
         tpe_parents)
-        .filter(!_.toString.startsWith("VC_TRAIT$"))
+        .filter(!_.toString.startsWith(virtualTraitPrefix+"$"))
         .filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object"))
     }
 
@@ -108,9 +105,6 @@ object family {
     }
 
     def typeTree(types: List[Tree]): c.universe.Tree = {
-      //if (types.length == 1)
-      //  types(0)
-      //else
       CompoundTypeTree(Template(tq"""scala.AnyRef""" :: types, emptyValDef, List()))
     }
 
@@ -235,8 +229,6 @@ object family {
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
             val typeDefInner: c.universe.Tree = //if (vcc.parents.length == 0)
               typeTree(inheritRelMapped)
-            //else
-            //typeTree(inheritRelMapped)
 
             val classTmpl = convertToTraitConstructor(vcc, impl, name, tparams, mods, classInner)
 
@@ -292,44 +284,12 @@ object family {
         case _ => List(d)
       })
 
-      val volatileFixesIntro: List[Tree] = {
-        if (isAbstract(mods) && !vcc.parents.exists(p => parentContainsVirtualClass(Ident(p), name)))
-          List({
-            val volatileFixName = newTermName(volatileFixMap.get(name.toString).get)
-            DefDef(Modifiers(DEFERRED), volatileFixName, List(), List(List()), tq"""Int""", EmptyTree)
-          })
-        else List()
-      }
-
-      val volatileFixes: List[Tree] = {
-        vc_parents.flatMap(p => {
-          if (volatileFixMap.isDefinedAt(getNameFromSub(getNameFromTree(p)))) {
-            val volatileFixName = newTermName(volatileFixMap.get(getNameFromSub(getNameFromTree(p))).get)
-            List(DefDef(Modifiers(), volatileFixName, List(), List(List()), tq"""Int""", Literal(Constant(0))))
-          } else Nil
-        })
-      }
-
-      val volatileFixesInParents: List[Tree] = {
-        val relevantInheritRel = inheritRel.filter(s => getParentNameFromSub(s) != vcc.enclName.toString && vc_parents.exists(t => getNameFromTree(t) == getNameFromSub(s)))
-        val vfnip = relevantInheritRel.flatMap(s => vcc.volatileFixesInVCTrait(newTypeName(s))) //getVolatileFixNameInParents(inheritRel.map(newTypeName(_)), enclName, parents.map(_.toString))
-        if (vfnip.length > 0)
-          List({
-            val volatileFixName = newTypeName(vfnip.head)
-            DefDef(Modifiers(), volatileFixName, List(), List(List()), tq"""Int""", Literal(Constant(0)))
-          })
-        else
-          List()
-      }
-
-      constructorTransformed //++ volatileFixesIntro ++ volatileFixes ++ volatileFixesInParents
+      constructorTransformed
     }
 
-    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], nameClashes: Map[String, TypeName], constructorParameters: List[(TermName, TypeName)]): List[Tree] = {
+    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], constructorParameters: List[(TermName, TypeName)]): List[Tree] = {
       val vparamss = List(
         constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
-
-      val clashOverrides = List() //nameClashes.map(s => DefDef(Modifiers(OVERRIDE), newTermName(s._1), List(), List(), TypeTree(), Select(Super(This(tpnme.EMPTY), s._2), newTermName(s._1))))
 
       val fcn = newTypeName(fixClassName(name, enclName))
 
@@ -345,10 +305,10 @@ object family {
       if (!(isAbstract(mods)))
         DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
           td ::
-          ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)) :: Nil
+          ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)))) :: Nil
       else
         // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
-        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)) ++ clashOverrides)))
+        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)))))
     }
 
     def finalClass(enclName: TypeName, body: List[c.universe.Tree], parents: List[Tree]) = {
@@ -364,14 +324,12 @@ object family {
 
             val classParents = mapInheritanceRelation(classInner.distinct, body)
 
-            //val nc = vcc.nameClashesForVCClass(name)
-
             val constructorParameters = if (!isOverridenVirtualClass(mods))
               getConstructorParameters(vc_body)
             else
               parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p))).distinct
 
-            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, Map(), constructorParameters)
+            makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, constructorParameters)
 
           case _ => Nil
         })
@@ -386,8 +344,7 @@ object family {
         else
           Modifiers(ABSTRACT)
 
-        //val nc = vcc.nameClashesForVCClass(name)
-        makeFinalVirtualClassPart(name, enclName, mods, typeTree(typeDef), List(), classParents, Map(), getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => vcc.getParentVCClasses(getNameFromTree(p)).contains(name)).head)))
+        makeFinalVirtualClassPart(name, enclName, mods, typeTree(typeDef), List(), classParents, getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => vcc.getParentVCClasses(getNameFromTree(p)).contains(name)).head)))
       }
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
 
@@ -399,7 +356,7 @@ object family {
         try {
           val tpt = Ident(newTypeName(name))
           val tp = computeType(tpt)
-          tp.members.filter(s => s.name.toString.startsWith("VC_TRAIT$")).toList
+          tp.members.filter(s => s.name.toString.startsWith(virtualTraitPrefix + "$")).toList
         } catch {
           case e: Throwable => e.printStackTrace(); Nil
         }
@@ -414,28 +371,6 @@ object family {
           case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
           case _ => false
         })
-      }
-
-      def declsInVCTrait(traitName: TypeName): List[String] = {
-        getVCClassesSymbols(getParentNameFromSub(traitName.toString))
-          .filter(s => s.isClass && s.name == traitName)
-          .flatMap(s =>
-            s.asClass.toType.declarations
-              .filter(s => s.isMethod && !s.asMethod.isConstructor && !s.isDeferred)
-              .map(_.name.toString)
-              .filter(s => !s.endsWith("_$eq")))
-          .map(_.trim).distinct
-      }
-
-      def volatileFixesInVCTrait(traitName: TypeName): List[String] = {
-        getVCClassesSymbols(getParentNameFromSub(traitName.toString))
-          .filter(s => s.isClass && s.name == traitName)
-          .flatMap(s =>
-            s.asClass.toType.declarations
-              .filter(s => s.isMethod && !s.asMethod.isConstructor && s.isDeferred)
-              .map(_.name.toString)
-              .filter(s => s.startsWith("volatileFix$")))
-          .map(_.trim).distinct
       }
 
       def isVC(name: TypeName) = {
@@ -463,8 +398,7 @@ object family {
       }
 
       lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => {/*println(computeType(Ident(p)).baseClasses);*/ computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName)}).reverse.distinct.reverse 
-      //(parents.map(p => computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(s => s.name.toTypeName.toString)).foldRight(List[String]())((a, b) => getLin2(a, b))).map(newTypeName(_))
-
+      
       lazy val toCompleteFromParents = parents.flatMap(p => getParentVCClasses(p.toString)).filter(!findClassInBodies(_).isDefined).distinct
 
       def getBaseClassesInBodies(name: TypeName): List[TypeName] = {
@@ -479,19 +413,12 @@ object family {
       def getVirtualClassLinearization(name: TypeName): List[TypeName] = {
         val parents = getBaseClassesInBodies(name)
         val current = (allBaseClasses.flatMap(p => getParentsInParent(p, name)) ++ parents.reverse).filter(n => n.toString != "scala.AnyRef").map(_.toString).distinct.map(newTypeName(_))
-        // TODO: class linearization has to be smarter than just using distinct...
-        //println(s"current: $current")
-        //val result = name :: current.map(c => getVirtualClassLinearization(c).map(_.toString)).foldRight(List[String]())((a,b) => getLin2(a, b)).map(newTypeName(_))
-        val result = name :: current.flatMap(c => getVirtualClassLinearization(c)).reverse.distinct.reverse
-        //println(s"getVirtualClassLinearization($name) in $enclName: $result")
-        result
+        name :: current.flatMap(c => getVirtualClassLinearization(c)).reverse.distinct.reverse
       }
 
       def getVCTraits(name: TypeName): List[TypeName] = {
         val inParents = allBaseClasses.filter(p => parentContainsVirtualClass(Ident(p), name)).map(p => newTypeName(virtualTraitName(name, p)))
         val result = if (findClassInBodies(name).isDefined) newTypeName(virtualTraitName(name, enclName)) :: inParents else inParents
-        //println(s"allBaseClasses: $allBaseClasses")
-        //println(s"getVCTraits($name) in $enclName: $result")
         if (result.isEmpty)
           List(name)
         else
@@ -499,9 +426,7 @@ object family {
       }
 
       def getClassMixins(name: TypeName): List[TypeName] = {
-        val result = getVirtualClassLinearization(name).reverse.flatMap(n => getVCTraits(n).reverse)
-        //println(s"getClassMixins($name) in $enclName: $result")
-        result
+        getVirtualClassLinearization(name).reverse.flatMap(n => getVCTraits(n).reverse)
       }
 
     }
