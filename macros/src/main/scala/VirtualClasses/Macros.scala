@@ -32,11 +32,12 @@ object family {
     def finalClassName(className: TypeName) =
       finalClassPrefix + "$" + className
 
-    lazy val noParameterConstructor = q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""
+    lazy val noParameterConstructor = q"def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"
     lazy val noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
-      DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+      val consparams = params.map { case (name, tpe) => ValDef(Modifiers(PARAM | PARAMACCESSOR), name, Ident(tpe), EmptyTree) }
+      q"def ${nme.CONSTRUCTOR}(..$consparams) = { super.${nme.CONSTRUCTOR}(); () }"
     }
 
     def isVirtualClass(mods: c.universe.Modifiers) = {
@@ -103,7 +104,7 @@ object family {
     }
 
     def typeTree(types: List[Tree]): c.universe.Tree = {
-      CompoundTypeTree(Template(tq"""scala.AnyRef""" :: types, emptyValDef, List()))
+      CompoundTypeTree(Template(tq"scala.AnyRef" :: types, emptyValDef, List()))
     }
 
     def getNameFromSub(name: String) = name.takeRight(name.length - name.lastIndexOf("$") - 1)
