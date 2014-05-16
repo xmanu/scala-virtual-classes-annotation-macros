@@ -32,9 +32,7 @@ object family {
     def finalClassName(className: TypeName) =
       finalClassPrefix + "$" + className
 
-    val volatileFixMap: scala.collection.mutable.HashMap[String, String] = new scala.collection.mutable.HashMap()
-
-    lazy val noParameterConstructor = q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }""" //DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(()))))
+    lazy val noParameterConstructor = q"""def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"""
     lazy val noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
@@ -200,13 +198,6 @@ object family {
     def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
       val vcc = new VCContext(enclName, parents.map(p => newTypeName(getNameFromTree(p))), body)
 
-      body.foreach(b =>
-        b match {
-          case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods) && isAbstract(mods)) =>
-            volatileFixMap.put(name.toString, c.fresh("volatileFix$"))
-          case _ => ;
-        })
-
       val bodyTransform = body.flatMap(b =>
         b match {
           case cd @ ClassDef(mods, name, tparams, impl) if (isVirtualClass(mods)) =>
@@ -227,7 +218,7 @@ object family {
             val inheritRel = vcc.getTypeBounds(name).map(_.toString)
             val classInner = vcc.getClassMixins(name).map(_.toString)
             val inheritRelMapped = mapInheritanceRelation(inheritRel, body)
-            val typeDefInner: c.universe.Tree = //if (vcc.parents.length == 0)
+            val typeDefInner: c.universe.Tree =
               typeTree(inheritRelMapped)
 
             val classTmpl = convertToTraitConstructor(vcc, impl, name, tparams, mods, classInner)
@@ -253,7 +244,7 @@ object family {
                 DefDef(Modifiers(DEFERRED), newTermName(factoryName(name)), tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
                 b
           case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
-            List(noParameterTraitConstructor)
+            List()
           case _ => List(b)
         })
 
@@ -301,14 +292,13 @@ object family {
         Ident(newTypeName(fixClassName(name, enclName)))
       else
         AppliedTypeTree(Ident(newTypeName(fixClassName(name, enclName))), getTypeNames(tparams).map(t => Ident(t)))
-
+        
       if (!(isAbstract(mods)))
         DefDef(Modifiers(), newTermName(factoryName(name)), tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
-          td ::
-          ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)))) :: Nil
+          td :: ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters))
+      )) :: Nil
       else
-        // fixClass has to be mixed in right now even for abstract classes, as it gets queried with reflection in families which inherit this one... Later List(td) should suffice.
-        List(td, ClassDef(fixMods, fixClassName(name, enclName), tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters)))))
+        List(td)
     }
 
     def finalClass(enclName: TypeName, body: List[c.universe.Tree], parents: List[Tree]) = {
@@ -435,11 +425,18 @@ object family {
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
-          val classDef = ClassDef(Modifiers(ABSTRACT | TRAIT), name, tparams, Template(parents, ValDef(Modifiers(PRIVATE), newTermName("outer"), TypeTree(), EmptyTree), transformBody(body, name, parents)))
-          val newObjectBody: List[Tree] = noParameterConstructor :: finalClass(name, body, parents) :: DefDef(Modifiers(), newTermName("apply"), List(), List(List()), TypeTree(), Apply(Select(New(Ident(newTypeName(finalClassName(name)))), nme.CONSTRUCTOR), List())) :: Nil
-          val newObjectTemplate = Template(List(tq"""scala.AnyRef"""), emptyValDef, newObjectBody)
-          val newObjectDef = ModuleDef(Modifiers(), name.toTermName, newObjectTemplate)
-          Block(List(classDef, newObjectDef), Literal(Constant(())))
+          val classDef = 
+            q"""abstract trait $name[..$tparams] 
+          		  extends ..$parents { outer => 
+          		  ..${transformBody(body,name,parents)} 
+                }"""
+          val newObjectDef = 
+            q"""object ${name.toTermName} { 
+          		def apply() = new ${newTypeName(finalClassName(name))}; 
+          		${finalClass(name, body, parents)} 
+          	}"""
+          
+          q"{ ..${List(classDef, newObjectDef)} }"
       }
     }
     c.Expr[Any](result)
