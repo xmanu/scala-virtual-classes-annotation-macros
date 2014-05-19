@@ -97,7 +97,6 @@ abstract trait OuterB15 extends OuterA15 { outer =>
   abstract trait VC_TRAIT$OuterB15$InnerD extends VC_TRAIT$OuterA15$InnerC { self: InnerD =>
     override def queryA = super.queryA.$plus(", B.D.A")
   };
-  type InnerC >: _root_.scala.Null <: InnerB with VC_TRAIT$OuterA15$InnerC
 };
 object OuterB15 extends scala.AnyRef {
   ;
