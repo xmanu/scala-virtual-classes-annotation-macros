@@ -22,44 +22,13 @@ import scalafx.scene.input.MouseEvent
 import scalafx.scene.input.MouseButton
 
 object GraphExample extends JFXApp {
-  val ugf = WeightedUndirectedGraphWithPrettyPrintAndFeatures()
-  import ugf._
-
-  val a = Node("A")
-  val b = Node("B")
-  val c = Node("C")
-  val d = Node("D")
-
-  ugf.nodes = List(a, b, c, d)
-  ugf.edges = List(a.connect(b), b.connect(a), b.connect(c), d.connect(c))
-  for { i <- (0 until edges.size) } ugf.edges(i).w = i
-
-  println(ugf)
-  println(a.connectedNodes)
-  println(a.allConnectedNodes)
-
-  val gf = WeightedGraphWithPrettyPrintAndFeatures()
-
-  val a2 = gf.Node("A")
-  val b2 = gf.Node("B")
-  val c2 = gf.Node("C")
-  val d2 = gf.Node("D")
-
-  gf.nodes = List(a2, b2, c2, d2)
-  gf.edges = List(a2.connect(b2), b2.connect(a2), b2.connect(c2), d2.connect(c2))
-  for { i <- (0 until edges.size) } gf.edges(i).w = i
-
-  println(gf)
-  println(a2.connectedNodes)
-  println(a2.allConnectedNodes)
-
   var dijkstra: DrawableDijkstra = DrawableDijkstra()
   fillDijkstra(dijkstra)
 
   stage = new JFXApp.PrimaryStage {
-    title = "Hello World"
-    width = 600
-    height = 450
+    title = "Dijkstra"
+    width = 500
+    height = 500
     scene = new Scene {
       fill = Color.LIGHTGREEN
       root = new AnchorPane {
@@ -80,7 +49,7 @@ object GraphExample extends JFXApp {
   def fillDijkstra(dijkstra: HighlightableDijkstra) {
     // incredibly inefficient Dijkstra...
 
-    val max = 10
+    val max = 15
 
     for { i <- (1 to max); j <- (1 to max) } {
       val node = dijkstra.Node(s"$i,$j")
@@ -226,6 +195,18 @@ object GraphExample extends JFXApp {
         text = name
         font = new Font(10)
       })
+    }
+  }
+
+  @virtual override class Edge {
+    override lazy val uiRepresentation = new Line {
+      val offsetY = if (to.x > from.x) 1 else -1
+      val offsetX = (if (to.y > from.y) 1 else -1) * offsetY
+      startX = from.x + offsetX
+      startY = from.y + offsetY
+      endX = to.x + offsetX
+      endY = to.y + offsetY
+      stroke = Color.rgb(255 - w, 255 - w, 255)
     }
   }
 }
