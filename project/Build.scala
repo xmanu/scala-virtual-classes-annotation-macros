@@ -21,7 +21,7 @@ object MyBuild extends Build {
     settings = buildSettings ++ Seq(
       run <<= run in Compile in core
     )
-  ) aggregate(macros, core)
+  ) aggregate(macros, core, graph)
 
   lazy val macros: Project = Project(
     "virtual-classes-macros",
@@ -37,5 +37,15 @@ object MyBuild extends Build {
     file("core"),
     settings = buildSettings ++ Seq(
 		libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test")
+  ) dependsOn(macros)
+  
+  lazy val graph: Project = Project(
+	  "virtual-classes-graph-example",
+	  file("graph-example"),
+      settings = buildSettings ++ Seq(
+  		libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+		libraryDependencies += "org.scalafx" %% "scalafx" % "1.0.0-R8",
+		unmanagedJars in Compile += Attributed.blank(file(scala.util.Properties.javaHome) / "/lib/jfxrt.jar"),
+		fork := true)
   ) dependsOn(macros)
 }

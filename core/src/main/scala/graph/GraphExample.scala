@@ -1,6 +1,7 @@
 package graph
 
 import VirtualClasses._
+import scala.util.control.Breaks._
 
 object GraphExample extends App {
   val ugf = WeightedUndirectedGraphWithPrettyPrintAndFeatures()
@@ -33,6 +34,35 @@ object GraphExample extends App {
   println(gf)
   println(a2.connectedNodes)
   println(a2.allConnectedNodes)
+
+  
+  // incredibly inefficient Dijkstra...
+  val dijkstra = Dijkstra()
+
+  val max = 10
+
+  for { i <- (1 to max); j <- (1 to max) } {
+    val node = dijkstra.Node(s"$i,$j")
+    dijkstra.nodes ++= List(node)
+  }
+  for { i <- (1 to max); j <- (1 to max) } {
+    val node = dijkstra.nodes.find(_.name == s"$i,$j").get
+    if (i > 1 && j > 1)
+      dijkstra.edges ++= List(node.connect(dijkstra.nodes.find(_.name == s"${(i - 1)},${j - 1}").get))
+    if (i > 1 && j < max)
+      dijkstra.edges ++= List(node.connect(dijkstra.nodes.find(_.name == s"${(i - 1)},${j + 1}").get))
+    if (i < max && j > 1)
+      dijkstra.edges ++= List(node.connect(dijkstra.nodes.find(_.name == s"${(i + 1)},${j - 1}").get))
+    if (i < max && j < max)
+      dijkstra.edges ++= List(node.connect(dijkstra.nodes.find(_.name == s"${(i + 1)},${j + 1}").get))
+  }
+  val r = new scala.util.Random()
+  for { e <- dijkstra.edges } {
+    e.w = 1 //r.nextInt(1000)
+  }
+
+  println(dijkstra)
+  println(dijkstra.findShortestPath(dijkstra.nodes(0), dijkstra.nodes(max * max - 1)))
 }
 
 @family class Graph {
@@ -75,7 +105,7 @@ object GraphExample extends App {
     override def toString: String = s"$from -> $to"
   }
 
-  override def toString: String = s"Nodes: ${nodes.mkString(", ")}; Edges: ${edges.mkString(", ")}"
+  override def toString: String = s"Nodes: ${nodes.mkString(", ")}\nEdges: ${edges.mkString(", ")}"
 }
 
 @family class UndirectedPrettyPrintedGraph extends PrettyPrintGraph with UndirectedGraphFeatures {
@@ -103,7 +133,7 @@ object GraphExample extends App {
   }
 }
 
-@family class WeightedPrettyPrintGraph extends WeightedGraph {
+@family class WeightedPrettyPrintGraph extends WeightedGraph with PrettyPrintGraph {
   @virtual override class Edge {
     override def toString: String = s"$from -$w-> $to"
   }
@@ -117,15 +147,45 @@ object GraphExample extends App {
 
 @family class WeightedGraphWithPrettyPrintAndFeatures extends WeightedPrettyPrintGraph with GraphWithPrettyPrintAndFeatures
 
-@family class WeightedUndirectedGraphWithPrettyPrintAndFeatures extends UndirectedWeightedPrettyPrintGraph with UndirectedGraphFeatures {
+@family class WeightedUndirectedGraphWithPrettyPrintAndFeatures extends UndirectedWeightedPrettyPrintGraph with UndirectedGraphFeatures
 
-}
+@family class Dijkstra extends WeightedPrettyPrintGraph with GraphFeatures {
+  @virtual override class Node {
+    var dist: Int = 0
+    var prev: Node = null
+  }
 
-@family class AStar extends WeightedGraph {
   def findShortestPath(start: Node, end: Node): List[Node] = {
-    val openList = Set[Node]()
-    
-    List()
+    for { n <- nodes } {
+      n.dist = Int.MaxValue
+      n.prev = null
+    }
+    start.dist = 0
+
+    var q = nodes
+
+    while (!q.isEmpty) {
+      var u = q.sortWith(_.dist < _.dist).head
+      q = q.filter(_ != u)
+      if (u == end) {
+        var res = List[Node]()
+        while (u.prev != null) {
+          res = u :: res
+          u = u.prev
+        }
+        return u :: res
+      }
+      if (u.dist == Int.MaxValue)
+        break
+      for { v <- u.connectedNodes } {
+        val alt = v.dist + edges.filter(e => e.from == u && e.to == v).head.w
+        if (alt < v.dist) {
+          v.dist = alt
+          v.prev = u
+        }
+      }
+    }
+    return List()
   }
 }
 
