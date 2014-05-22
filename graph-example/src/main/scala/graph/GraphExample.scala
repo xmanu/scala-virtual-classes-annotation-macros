@@ -34,7 +34,6 @@ object GraphExample extends JFXApp {
       root = new AnchorPane {
         content = Set(dijkstra.uiRepresentation)
         onMouseClicked = (ae: MouseEvent) => {
-          println("Mouse clicked")
           if (ae.button == MouseButton.PRIMARY)
             dijkstra = DrawableDijkstra()
           else
@@ -47,14 +46,10 @@ object GraphExample extends JFXApp {
   }
 
   def fillDijkstra(dijkstra: HighlightableDijkstra) {
-    // incredibly inefficient Dijkstra...
-
     val max = 15
 
     for { i <- (1 to max); j <- (1 to max) } {
-      val node = dijkstra.Node(s"$i,$j")
-      node.x = 30 * (i - 1) + 25
-      node.y = 30 * (j - 1) + 25
+      val node = dijkstra.Node(s"$i,$j", 30 * (i - 1) + 25, 30 * (j - 1) + 25)
       dijkstra.nodes ++= List(node)
     }
     for { i <- (1 to max); j <- (1 to max) } {
@@ -83,8 +78,6 @@ object GraphExample extends JFXApp {
 
     val path = dijkstra.findShortestPath(dijkstra.nodes(0), dijkstra.nodes(max * max - 1))
 
-    println(dijkstra)
-    println(path)
     for { n <- path } n.highlighted = true
   }
 }
@@ -141,10 +134,7 @@ object GraphExample extends JFXApp {
 @family class GraphWithPrettyPrintAndFeatures extends GraphFeatures with PrettyPrintGraph
 
 @family class PositionedGraph extends Graph {
-  @virtual override class Node {
-    var x: Int = 0
-    var y: Int = 0
-  }
+  @virtual override class Node(val name: String, val x: Int = 0, val y: Int = 0)
 }
 
 @family class DrawableGraph extends PositionedGraph with WeightedGraph {
@@ -268,6 +258,7 @@ object GraphExample extends JFXApp {
 
 @family class WeightedUndirectedGraphWithPrettyPrintAndFeatures extends UndirectedWeightedPrettyPrintGraph with UndirectedGraphFeatures
 
+// incredibly inefficient Dijkstra...
 @family class Dijkstra extends WeightedPrettyPrintGraph with GraphFeatures {
   @virtual override class Node {
     var dist: Int = 0

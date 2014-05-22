@@ -17,16 +17,15 @@ object family {
     val PARAMACCESSOR = (1 << 29).toLong.asInstanceOf[FlagSet]
 
     ///////////
-    
+
     def virtualTraitPrefix = "VC_TRAIT"
-    def factoryPrefix = "VC_NEW"
     def fixClassPrefix = "VC_FIX"
     def finalClassPrefix = "VC_FINAL"
 
     def virtualTraitName(className: Name, enclClassName: Name): Name =
       newTypeName(virtualTraitPrefix + "$" + enclClassName + "$" + className)
     def factoryName(className: Name): Name =
-      newTypeName(factoryPrefix + "$" + className): Name
+      className
     def fixClassName(className: Name, enclClassName: Name): Name =
       newTypeName(fixClassPrefix + "$" + enclClassName + "$" + className)
     def finalClassName(className: Name): Name =
@@ -66,7 +65,7 @@ object family {
         List(hi.typeSymbol.name.toTypeName.asInstanceOf[c.universe.TypeName])
       else
         tpe_parents)
-        .filter(!_.toString.startsWith(virtualTraitPrefix+"$"))
+        .filter(!_.toString.startsWith(virtualTraitPrefix + "$"))
         .filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object"))
     }
 
@@ -185,15 +184,25 @@ object family {
     }
 
     def getConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
-      val factorySym = computeType(Ident(parent)).member(factoryName(vc_name).toTermName)
-      if (factorySym == NoSymbol)
+      val factorySym = computeType(tq"${parent.toTypeName}").member(factoryName(vc_name).toTermName)
+      val res = if (factorySym == NoSymbol)
         List()
       else {
-        val params = factorySym.asMethod.paramss.head
-        params.map {
+        factorySym.asTerm.alternatives.map(alt => if (alt.isMethod) alt.asMethod.paramss.head.map {
           s => (s.name.toTermName, s.typeSignature.typeSymbol.name.toTypeName)
         }
+        else List())
       }
+      res
+    }
+
+    def getLongestConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
+      var longest = List[(TermName, TypeName)]()
+      getConstructorParametersInParent(vc_name, parent).foreach(l => {
+        if (l.length > longest.length)
+          longest = l
+      })
+      longest
     }
 
     def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
@@ -206,15 +215,22 @@ object family {
               c.error(cd.pos, "Only classes can be declared as virtual (they will be converted to traits though).")
             //TODO: support type parameters
             if (!tparams.isEmpty)
-              c.error(cd.pos, "Type parameters are currently not supported.")
+              c.abort(cd.pos, "Type parameters are currently not supported.")
 
             if (!isOverridenVirtualClass(mods) && parents.exists(t => parentContainsVirtualClass(t, name)))
-              c.error(cd.pos, s"The following parents of the class family already declare a class with the name $name: ${parents.filter(t => parentContainsVirtualClass(t, name)).mkString(", ")}.\nTo override functionality, declare the virtual class as overriden.")
+              c.abort(cd.pos, s"The following parents of the class family already declare a class with the name $name: ${parents.filter(t => parentContainsVirtualClass(t, name)).mkString(", ")}.\nTo override functionality, declare the virtual class as overriden.")
 
             val Template(vc_parents, _, vc_body) = impl
 
-            if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty)
-              c.error(cd.pos, "Overriden virtual classes cannot define constructor parameters.")
+            val constructorParametersWithEmpty = ((if (!isAbstract(mods)) List(getConstructorParameters(vc_body)) else List()) ++ parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName))).distinct
+            val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
+            val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+
+            val longest: List[(TermName, TypeName)] = parents.flatMap(p => getLongestConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+
+            if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty && !longest.zip(getConstructorParameters(vc_body)).map(a => a._1._1 == a._2._1 && a._1._2 == a._2._2).foldRight(true)((a, b) => a && b))
+              c.abort(cd.pos, "Overriden virtual classes may only add constructor parameters at the end.\nThe constructor parameters have to start with:\n" +
+                longest.map(cp => s"${cp._1}: ${cp._2}").mkString(", "))
 
             val inheritRel = vcc.getTypeBounds(name)
             val classInner = vcc.getClassMixins(name)
@@ -224,26 +240,21 @@ object family {
 
             val classTmpl = convertToTraitConstructor(vcc, impl, name, tparams, mods, classInner)
 
-            val constructorParameters = if (!isOverridenVirtualClass(mods))
-              getConstructorParameters(vc_body)
-            else
-              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+            val list = constructorParameters.flatMap { cp =>
+              val vparamss = List(
+                cp.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
+              List[Tree](DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree))
+            }
 
-            val vparamss = List(
-              constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
-
-            val b = List(
+            List(
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeDefInner)),
-              ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName).toTypeName, tparams, classTmpl))
-            if (vcc.allBaseClasses.exists(p => parentContainsVirtualClass(Ident(p), name)) || (isAbstract(mods)))
-              b
-            else
-              ModuleDef(Modifiers(), name.toTermName, Template(List(Select(Ident(newTermName("scala")), newTypeName("AnyRef"))), emptyValDef,
-                List(DefDef(Modifiers(), nme.CONSTRUCTOR, List(), List(List()), TypeTree(), Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))),
-                  DefDef(Modifiers(), newTermName("apply"), List(), vparamss, TypeTree(), Apply(Ident(factoryName(name).toTermName), constructorParameters.map { case (name, tpe) => Ident(name) }))) // TODO: implement unapply method
-                  )) ::
-                DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
-                b
+              ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName).toTypeName, tparams, classTmpl)) ++ list
+
+          //if (vcc.allBaseClasses.exists(p => parentContainsVirtualClass(Ident(p), name)) || (isAbstract(mods)))
+          //  b
+          //else
+          //  DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
+          //    b
           case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
             List()
           case _ => List(b)
@@ -271,18 +282,20 @@ object family {
     def transformVCBody(vcc: VCContext, body: List[Tree], vc_parents: List[Tree], name: TypeName, mods: Modifiers) = {
       val constructorTransformed = body.flatMap(d => d match {
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
-          List(noParameterTraitConstructor)
-        case ValDef(mods, name, tparams, rhs) if (mods.hasFlag(PARAMACCESSOR)) => List(ValDef(Modifiers(DEFERRED), name, tparams, EmptyTree))
+          List(noParameterTraitConstructor) ++ vparamss.head.map(p => p match {
+            case ValDef(mods, name, tparams, rhs) => {
+              val newMods = if (mods.hasFlag(PARAMACCESSOR) && rhs == EmptyTree) Modifiers(DEFERRED) else NoMods
+              ValDef(newMods, name, tparams, rhs)
+            }
+          })
+        case ValDef(mods, name, tparams, rhs) if (mods.hasFlag(PARAMACCESSOR)) => List() //List(ValDef(Modifiers(DEFERRED), name, tparams, EmptyTree))
         case _ => List(d)
       })
 
       constructorTransformed
     }
 
-    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], constructorParameters: List[(TermName, TypeName)]): List[Tree] = {
-      val vparamss = List(
-        constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
-
+    def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], constructorParameters: List[List[(TermName, TypeName)]]): List[Tree] = {
       val fcn = fixClassName(name, enclName)
 
       val fixMods = if (isAbstract(mods)) Modifiers(ABSTRACT) else NoMods
@@ -293,12 +306,19 @@ object family {
         Ident(fixClassName(name, enclName).toTypeName)
       else
         AppliedTypeTree(Ident(fixClassName(name, enclName).toTypeName), getTypeNames(tparams).map(t => Ident(t)))
-        
-      if (!(isAbstract(mods)))
-        DefDef(Modifiers(), factoryName(name).toTermName, tparams, vparamss, TypeTree(), Apply(Select(New(fixClassTypeName), nme.CONSTRUCTOR), constructorParameters.map { case (name, tpe) => Ident(name) })) ::
-          td :: ClassDef(fixMods, fixClassName(name, enclName).toTypeName, tparams, Template(classParents, emptyValDef, constructorParameters.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(constructorParameters))
-      )) :: Nil
-      else
+
+      if (!(isAbstract(mods))) {
+        var counter = 0
+        val list = constructorParameters.flatMap { cp =>
+          val vparamss = List(
+            cp.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
+          counter += 1
+          val fixName = newTermName(fixClassName(name, enclName) + "$" + counter)
+          List[Tree](DefDef(Modifiers(), factoryName(name), tparams, vparamss, TypeTree(), Apply(Select(New(Ident(fixName.toTypeName)), nme.CONSTRUCTOR), cp.map { case (name, tpe) => Ident(name) })),
+            ClassDef(fixMods, fixName.toTypeName, tparams, Template(classParents, emptyValDef, cp.map { case (name, tpe) => ValDef(Modifiers(PARAMACCESSOR | OVERRIDE), name, Ident(tpe), EmptyTree) } ++ List(parameterConstructor(cp)))))
+        }
+        td :: list
+      } else
         List(td)
     }
 
@@ -315,10 +335,9 @@ object family {
 
             val classParents = mapInheritanceRelation(classInner.distinct, body)
 
-            val constructorParameters = if (!isOverridenVirtualClass(mods))
-              getConstructorParameters(vc_body)
-            else
-              parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+            val constructorParametersWithEmpty = (List(getConstructorParameters(vc_body)) ++ parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName))).distinct
+            val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
+            val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
 
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, constructorParameters)
 
@@ -335,7 +354,11 @@ object family {
         else
           Modifiers(ABSTRACT)
 
-        makeFinalVirtualClassPart(name.toTypeName, enclName, mods, typeTree(typeDef), List(), classParents, getConstructorParametersInParent(name, getNameFromTree(parents.filter(p => vcc.getParentVCClasses(getNameFromTree(p)).contains(name)).head).toTypeName))
+        val constructorParametersWithEmpty = parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+        val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
+        val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+
+        makeFinalVirtualClassPart(name.toTypeName, enclName, mods, typeTree(typeDef), List(), classParents, constructorParameters)
       }
       val tmpl = Template(List(Ident(enclName)), emptyValDef, finalClassBody ++ bodyCompletion)
 
@@ -388,8 +411,8 @@ object family {
         (getBaseClassesInBodies(name).filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object")) ++ getParentsInParents(name)).distinct
       }
 
-      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => { computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName)}).reverse.distinct.reverse 
-      
+      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => { computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName) }).reverse.distinct.reverse
+
       lazy val toCompleteFromParents: List[TypeName] = parents.flatMap(p => getParentVCClasses(p).map(_.toTypeName)).filter(n => !findClassInBodies(n.toTypeName).isDefined).distinct
 
       def getBaseClassesInBodies(name: TypeName): List[TypeName] = {
@@ -426,17 +449,17 @@ object family {
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
-          val classDef = 
+          val classDef =
             q"""abstract trait $name[..$tparams] 
           		  extends ..$parents { outer => 
-          		  ..${transformBody(body,name,parents)} 
+          		  ..${transformBody(body, name, parents)} 
                 }"""
-          val newObjectDef = 
+          val newObjectDef =
             q"""object ${name.toTermName} { 
           		def apply() = new ${finalClassName(name).toTypeName}; 
           		${finalClass(name, body, parents)} 
           	}"""
-          
+
           q"{ ..${List(classDef, newObjectDef)} }"
       }
     }
