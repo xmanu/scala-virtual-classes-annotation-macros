@@ -175,36 +175,6 @@ object family {
         })
     }
 
-    def getConstructorParameters(vc_body: List[Tree]) = {
-      val constructorParameters = vc_body.flatMap(b => b match {
-        case ValDef(mods, name, Ident(tn), _) if mods.hasFlag(PARAMACCESSOR) => List((name, tn.toTypeName))
-        case _ => List()
-      })
-      constructorParameters
-    }
-
-    def getConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
-      val factorySym = computeType(tq"${parent.toTypeName}").member(factoryName(vc_name).toTermName)
-      val res = if (factorySym == NoSymbol)
-        List()
-      else {
-        factorySym.asTerm.alternatives.map(alt => if (alt.isMethod) alt.asMethod.paramss.head.map {
-          s => (s.name.toTermName, s.typeSignature.typeSymbol.name.toTypeName)
-        }
-        else List())
-      }
-      res
-    }
-
-    def getLongestConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
-      var longest = List[(TermName, TypeName)]()
-      getConstructorParametersInParent(vc_name, parent).foreach(l => {
-        if (l.length > longest.length)
-          longest = l
-      })
-      longest
-    }
-
     def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
       val vcc = new VCContext(enclName, parents.map(p => getNameFromTree(p).toTypeName), body)
 
@@ -222,15 +192,13 @@ object family {
 
             val Template(vc_parents, _, vc_body) = impl
 
-            val constructorParametersWithEmpty = ((if (!isAbstract(mods)) List(getConstructorParameters(vc_body)) else List()) ++ parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName))).distinct
-            val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
-            val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+            val constructorParameters = vcc.getConstructorParameters(name)
 
-            val longest: List[(TermName, TypeName)] = parents.flatMap(p => getLongestConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+            val mixed: List[(TermName, TypeName)] = vcc.getMixedConstructorParameters(name)
 
-            if (isOverridenVirtualClass(mods) && !getConstructorParameters(vc_body).isEmpty && !longest.zip(getConstructorParameters(vc_body)).map(a => a._1._1 == a._2._1 && a._1._2 == a._2._2).foldRight(true)((a, b) => a && b))
+            if (isOverridenVirtualClass(mods) && !vcc.getConstructorParametersInBodies(vc_body).isEmpty && !mixed.zip(vcc.getConstructorParametersInBodies(vc_body)).map(a => a._1._1 == a._2._1 && a._1._2 == a._2._2).foldRight(true)((a, b) => a && b))
               c.abort(cd.pos, "Overriden virtual classes may only add constructor parameters at the end.\nThe constructor parameters have to start with:\n" +
-                longest.map(cp => s"${cp._1}: ${cp._2}").mkString(", "))
+                mixed.map(cp => s"${cp._1}: ${cp._2}").mkString(", "))
 
             val inheritRel = vcc.getTypeBounds(name)
             val classInner = vcc.getClassMixins(name)
@@ -240,7 +208,7 @@ object family {
 
             val classTmpl = convertToTraitConstructor(vcc, impl, name, tparams, mods, classInner)
 
-            val list = constructorParameters.flatMap { cp =>
+            val list = if (isAbstract(mods)) List() else constructorParameters.flatMap { cp =>
               val vparamss = List(
                 cp.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
               List[Tree](DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree))
@@ -335,9 +303,7 @@ object family {
 
             val classParents = mapInheritanceRelation(classInner.distinct, body)
 
-            val constructorParametersWithEmpty = (List(getConstructorParameters(vc_body)) ++ parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName))).distinct
-            val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
-            val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+            val constructorParameters = vcc.getConstructorParameters(name)
 
             makeFinalVirtualClassPart(name, enclName, mods, typeDefInner, tparams, classParents, constructorParameters)
 
@@ -354,7 +320,7 @@ object family {
         else
           Modifiers(ABSTRACT)
 
-        val constructorParametersWithEmpty = parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
+        val constructorParametersWithEmpty = parents.flatMap(p => vcc.getConstructorParametersInParent(name, getNameFromTree(p).toTypeName)).distinct
         val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
         val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
 
@@ -396,6 +362,15 @@ object family {
           case ClassDef(_, n, _, _) => name == n
           case _ => false
         })
+      }
+
+      def getVCBody(name: TypeName) = {
+        findClassInBodies(name) match {
+          case None => None
+          case Some(cd) => cd match {
+            case ClassDef(_, _, _, Template(_, _, body)) => Some(body)
+          }
+        }
       }
 
       def getTypeBounds(name: TypeName) = {
@@ -443,6 +418,63 @@ object family {
         getVirtualClassLinearization(name).reverse.flatMap(n => getVCTraits(n).reverse)
       }
 
+      def getConstructorParametersInBodies(vc_body: List[Tree]) = {
+        val constructorParameters = vc_body.flatMap(b => b match {
+          case ValDef(mods, name, Ident(tn), _) if mods.hasFlag(PARAMACCESSOR) => List((name, tn.toTypeName))
+          case _ => List()
+        })
+        constructorParameters
+      }
+
+      def getConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
+        val factorySym = computeType(tq"${parent.toTypeName}").member(factoryName(vc_name).toTermName)
+        val res = if (factorySym == NoSymbol)
+          List()
+        else {
+          factorySym.asTerm.alternatives.map(alt => if (alt.isMethod) alt.asMethod.paramss.head.map {
+            s => (s.name.toTermName, s.typeSignature.typeSymbol.name.toTypeName)
+          }
+          else List())
+        }
+        res
+      }
+
+      def getLongestConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
+        var longest = List[(TermName, TypeName)]()
+        getConstructorParametersInParent(vc_name, parent).foreach(l => {
+          if (l.length > longest.length)
+            longest = l
+        })
+        longest
+      }
+
+      def getMixedConstructorParameters(name: TypeName) = {
+        var allLongestConstructors = parents.map { p =>
+          val classLin = getVirtualClassLinearization(name)
+          getLongestConstructorParametersInParent(name, p)
+        }.distinct
+        var mixed: List[(TermName, TypeName)] = List()
+        if (allLongestConstructors.length > 0) {
+          while (!allLongestConstructors.isEmpty) {
+            val head = allLongestConstructors.head
+            if (head.isEmpty) {
+              allLongestConstructors = allLongestConstructors.tail
+            } else {
+              val firstParameter = head.head
+              mixed ::= firstParameter
+              allLongestConstructors = allLongestConstructors.map(cp => if (!cp.isEmpty && cp.head == firstParameter) cp.tail else cp)
+            }
+          }
+          mixed.reverse
+        } else List()
+      }
+
+      def getConstructorParameters(name: TypeName): List[List[(TermName, TypeName)]] = {
+        val constructorParametersWithEmpty = (List(getConstructorParametersInBodies(getVCBody(name).get)) ++ List(getMixedConstructorParameters(name)) ++ parents.flatMap(p => getConstructorParametersInParent(name, p))).distinct
+        val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
+        val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+        constructorParameters.distinct
+      }
     }
 
     // main transformation happens here

@@ -17,7 +17,14 @@ class ConstructorParameters extends UnitSpec {
     assert(ob.inner.i == 7)
     assert(ob.inner.s == "Test")
     
-    //val od = OuterD()
+    val od = OuterD()
+    val ia3 = od.InnerA(42, "truth", 49)
+    assert(ia3.i == 42)
+    assert(ia3.s == "truth")
+    assert(ia3.j == 49)
+    assert(od.inner.i == 7)
+    assert(od.inner.s == "Test")
+    assert(od.inner.j == 0)
   }
 }
 
@@ -35,6 +42,6 @@ class ConstructorParameters extends UnitSpec {
   @virtual override class InnerA(val i: Int, val j: Int = 0)
 }
 
-/*@family class OuterD extends OuterB with OuterC {
-  @virtual override class InnerA(val i: Int, val s: String = "Test2", val j: Int = 9)
-}*/
+@family class OuterD extends OuterB with OuterC {
+  @virtual override class InnerA(val i: Int, val s: String, val j: Int)
+}
