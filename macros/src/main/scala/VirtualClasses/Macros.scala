@@ -218,11 +218,6 @@ object family {
               TypeDef(Modifiers(DEFERRED), name, tparams, TypeBoundsTree(Select(Select(Ident(nme.ROOTPKG), newTermName("scala")), newTypeName("Null")), typeDefInner)),
               ClassDef(Modifiers(ABSTRACT | TRAIT), virtualTraitName(name, enclName).toTypeName, tparams, classTmpl)) ++ list
 
-          //if (vcc.allBaseClasses.exists(p => parentContainsVirtualClass(Ident(p), name)) || (isAbstract(mods)))
-          //  b
-          //else
-          //  DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree) ::
-          //    b
           case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
             List()
           case _ => List(b)
@@ -252,7 +247,8 @@ object family {
         case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
           List(noParameterTraitConstructor) ++ vparamss.head.map(p => p match {
             case ValDef(mods, name, tparams, rhs) => {
-              val newMods = if (mods.hasFlag(PARAMACCESSOR) && rhs == EmptyTree) Modifiers(DEFERRED) else NoMods
+              //val newMods = Modifiers((mods.flags.asInstanceOf[Long] & ~PARAMACCESSOR.asInstanceOf[Long]).asInstanceOf[FlagSet])
+              val newMods = if (rhs == EmptyTree) Modifiers(DEFERRED) else NoMods
               ValDef(newMods, name, tparams, rhs)
             }
           })

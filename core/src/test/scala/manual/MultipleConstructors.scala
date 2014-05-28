@@ -5,18 +5,20 @@ import scala.language.experimental.macros
 import scala.reflect.macros.Context
 import VirtualClasses._
 
-object MultipleConstructors extends App {
-  val oa = OuterA()
-  val ia: oa.InnerA = oa.InnerA(42)
-  println(s"${ia.a} == 42")
-  println(s"${oa.innerInstance.a} == 7")
+class MultipleConstructors extends UnitSpec {
+  "multiple constructors" should "work manually" in {
+    val oa = OuterA()
+    val ia: oa.InnerA = oa.InnerA(42)
+    assert(ia.a == 42)
+    assert(oa.innerInstance.a == 7)
 
-  val ob = OuterB()
-  val ia2 = ob.InnerA(42, "truth")
-  println(s"${ia2.a} == 42")
-  println(s"${ia2.b} == truth")
-  println(s"${ob.innerInstance.a} == 7")
-  println(s"${ob.innerInstance.b} == null")
+    val ob = OuterB()
+    val ia2 = ob.InnerA(42, "truth")
+    assert(ia2.a == 42)
+    assert(ia2.b == "truth")
+    assert(ob.innerInstance.a == 7)
+    assert(ob.innerInstance.b == null)
+  }
 }
 
 trait OuterA {
