@@ -38,6 +38,20 @@ class ConstructorParameters extends UnitSpec {
     assert(oe.inner.s == "Test2")
     assert(oe.inner.j == 2)
     assert(oe.inner.k == "k2")
+    
+    val of = OuterF()
+    val ia5 = of.InnerB(42, "truth", 49, "truth2", "m2")
+    assert(ia5.i == 42)
+    assert(ia5.s == "truth")
+    assert(ia5.j == 49)
+    assert(ia5.k == "truth2")
+    assert(ia5.m == "m2")
+    assert(of.inner.i == 7)
+    assert(of.innerb.i == 8)
+    assert(of.inner.s == "Test2")
+    assert(of.inner.j == 2)
+    assert(of.inner.k == "k2")
+    assert(of.innerb.m == "m")
   }
 }
 
@@ -65,3 +79,16 @@ class ConstructorParameters extends UnitSpec {
     override val j: Int = 2
   }
 }
+
+@family class OuterF extends OuterE {
+  @virtual class InnerB(val i: Int, val s: String = "Test3", val j: Int = 3, val k: String = "k3", val m: String = "m") extends InnerA {
+    
+  }
+  
+  val innerb = InnerB(8)
+}
+
+/*@family class OuterG extends OuterF {
+  // constructor parameters with type parameters are not allowed
+  @virtual class InnerC(val lst: List[String])
+}*/

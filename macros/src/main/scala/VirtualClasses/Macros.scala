@@ -248,7 +248,7 @@ object family {
           List(noParameterTraitConstructor) ++ vparamss.head.map(p => p match {
             case ValDef(mods, name, tparams, rhs) => {
               //val newMods = Modifiers((mods.flags.asInstanceOf[Long] & ~PARAMACCESSOR.asInstanceOf[Long]).asInstanceOf[FlagSet])
-              
+
               val deferredFlags = if (rhs == EmptyTree) DEFERRED else NoFlags
               val overrideFlags = if (vcc.isConstructorParmeterOverriden(vc_name, name)) OVERRIDE else NoFlags
               ValDef(Modifiers(deferredFlags | overrideFlags), name, tparams, rhs)
@@ -419,6 +419,7 @@ object family {
       def getConstructorParametersInBodies(vc_body: List[Tree]) = {
         val constructorParameters = vc_body.flatMap(b => b match {
           case ValDef(mods, name, Ident(tn), _) if mods.hasFlag(PARAMACCESSOR) => List((name, tn.toTypeName))
+          case vd @ ValDef(mods, name, _, _) if mods.hasFlag(PARAMACCESSOR) => c.abort(vd.pos, s"Constructor parameter $name cannot have type parameters.")
           case _ => List()
         })
         constructorParameters
@@ -434,6 +435,7 @@ object family {
           }
           else List())
         }
+        //println(s"getConstructorParametersInParent($vc_name, $parent) = $res")
         res
       }
 
@@ -466,14 +468,25 @@ object family {
           mixed.reverse
         } else List()
       }
- 
+
       def getConstructorParameters(name: TypeName): List[List[(TermName, TypeName)]] = {
-        val constructorParametersWithEmpty = (List(getConstructorParametersInBodies(getVCBody(name).get)) ++ List(getMixedConstructorParameters(name)) ++ parents.flatMap(p => getConstructorParametersInParent(name, p))).distinct
+        val classLin = getVirtualClassLinearization(name)
+        val res = classLin.flatMap(n => getConstructorParametersForVC(n)).distinct
+        //println(s"getConstructorParameters($name) = $res")
+        if (res.filter(cp => !cp.isEmpty).isEmpty)
+          res
+        else
+          res.filter(cp => !cp.isEmpty)
+      }
+
+      def getConstructorParametersForVC(name: TypeName): List[List[(TermName, TypeName)]] = {
+        val constructorParametersWithEmpty = (List(getConstructorParametersInBodies(getVCBody(name).getOrElse(List()))) ++ List(getMixedConstructorParameters(name)) ++ parents.flatMap(p => getConstructorParametersInParent(name, p))).distinct
         val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
         val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
+        //println(s"getConstructorParametersForVC($name) = ${constructorParameters.distinct}")
         constructorParameters.distinct
       }
-      
+
       def isConstructorParmeterOverriden(vc_name: TypeName, cp_name: TermName) = {
         val constructorParameters = getConstructorParameters(vc_name)
         val constructorParametersFiltered = constructorParameters.map(l => l.filter(p => p._1 == cp_name))
