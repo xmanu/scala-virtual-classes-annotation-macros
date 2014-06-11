@@ -134,7 +134,7 @@ trait EvalTrait {
 
 Current limitations:
 -----
-1. Constructor arguments support is very limited, type parameters are not supported, and constructor parameters cannot be refined. Also they are not able to pass paremeters to base classes yet.
+1. Constructor arguments support is very limited and type parameters are not supported. Constructor parameters can only be added in sub-families and also it is not possible to pass paremeters to base classes yet.
 2. type parameters are not supported
 3. Virtual classes in virtual classes are not handled correctly
 4. Virtual case classes are not supported

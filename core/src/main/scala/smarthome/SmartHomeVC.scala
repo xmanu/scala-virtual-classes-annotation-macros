@@ -2,7 +2,7 @@ package smarthome
 
 import VirtualClasses._
 
-@family class Building {
+@family class Buildings {
   @virtual abstract class Location
   
   @virtual abstract class CompositeLocation extends Location {
@@ -24,7 +24,7 @@ import VirtualClasses._
 
 class Light { def turnOn() {  println("light on")  }; def turnOff() {  println("light off")  }; }
 
-@family class Lights extends Building {
+@family class Lights extends Buildings {
   @virtual override abstract class Location {
     var _lights: List[Light] = List()
     
@@ -42,7 +42,7 @@ class Light { def turnOn() {  println("light on")  }; def turnOff() {  println("
 
 class Shutter { def raise() { println("Shutter raised") }; def lower() { println("Shutter lowered") }; }
 
-@family class Shutters extends Building {
+@family class Shutters extends Buildings {
   @virtual override abstract class Location {
     var _shutters: List[Shutter] = List()
     def shutters: List[Shutter] = _shutters
@@ -59,7 +59,7 @@ class Shutter { def raise() { println("Shutter raised") }; def lower() { println
 
 @family class LightsAndShutters extends Lights with Shutters
 
-@family class Estate extends Building with LightsAndShutters {
+@family class Estate extends Buildings with LightsAndShutters {
   @virtual class Garage extends Location {
     def Car = "Audi R8"
   }
