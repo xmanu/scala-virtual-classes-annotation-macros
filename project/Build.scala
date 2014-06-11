@@ -44,7 +44,7 @@ object MyBuild extends Build {
 	  "virtual-classes-graph-example",
 	  file("graph-example"),
       settings = buildSettings ++ Seq(
-  		libraryDependencies += "org.scalatest" % "scalatest_2.10" % "2.0" % "test",
+  		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test",
 		libraryDependencies += "org.scalafx" %% "scalafx" % "1.0.0-R8",
 		unmanagedJars in Compile += Attributed.blank(file(scala.util.Properties.javaHome) / "/lib/jfxrt.jar"),
 		fork := true)
