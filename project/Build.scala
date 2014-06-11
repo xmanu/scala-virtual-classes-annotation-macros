@@ -6,7 +6,7 @@ object BuildSettings {
     organization := "com.github.xmanu.virtual-classes",
     version := "0.1",
     scalacOptions ++= Seq("-deprecation", "-feature"),
-    scalaVersion := "2.11.0",
+    scalaVersion := "2.11.1",
     resolvers += Resolver.sonatypeRepo("snapshots"),
     addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0" cross CrossVersion.full)
   )
