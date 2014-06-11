@@ -18,6 +18,15 @@ object family {
 
     ///////////
 
+    /////////// poor endless loop prevention...
+
+    if (c.enclosingMacros.size > 1000) {
+      println(s"Macro has recursed too many times. Aborting. ${c.enclosingMacros}")
+      c.abort(c.macroApplication.pos, "Macro has recursed too many times. Aborting.")
+    }
+
+    //////////
+
     def virtualTraitPrefix = "VC_TRAIT"
     def fixClassPrefix = "VC_FIX"
     def finalClassPrefix = "VC_FINAL"
@@ -83,7 +92,19 @@ object family {
       someValueOfGivenTypeChecked.tpe
     }
 
+    lazy val typeCache = collection.mutable.Map[String, Type]()
+
     def computeType(tpt: Tree): Type = {
+      if (typeCache.contains(tpt.toString)) {
+        typeCache(tpt.toString)
+      } else {
+        val tpe = computedType(tpt)
+        typeCache(tpt.toString) = tpe
+        tpe
+      }
+    }
+
+    def computedType(tpt: Tree): Type = {
       try {
         if (tpt.tpe != null) {
           tpt.tpe
@@ -175,8 +196,8 @@ object family {
         })
     }
 
-    def transformBody(body: List[Tree], enclName: TypeName, parents: List[Tree]): List[Tree] = {
-      val vcc = new VCContext(enclName, parents.map(p => getNameFromTree(p).toTypeName), body)
+    def transformBody(vcc: VCContext): List[Tree] = {
+      val ClassDef(_, enclName, _, Template(parents, _, body)) = vcc.familyClassDef
 
       val bodyTransform = body.flatMap(b =>
         b match {
@@ -206,7 +227,7 @@ object family {
             val typeDefInner: c.universe.Tree =
               typeTree(inheritRelMapped)
 
-            val classTmpl = convertToTraitConstructor(vcc, impl, name, tparams, mods, classInner)
+            val classTmpl = vcc.convertToTraitConstructor(cd)
 
             val list = if (isAbstract(mods)) List() else constructorParameters.flatMap { cp =>
               val vparamss = List(
@@ -230,35 +251,6 @@ object family {
       }
 
       bodyTransform ++ bodyCompletion
-    }
-
-    /**
-     * we converted the class to a trait so change the constructor from <init> to $init$ and remove the super call...
-     */
-    def convertToTraitConstructor(vcc: VCContext, templ: c.universe.Template, name: TypeName, tparams: List[TypeDef], mods: Modifiers, classInner: List[TypeName]): c.universe.Template = {
-      templ match {
-        case Template(vc_parents, self, body) =>
-          Template(tq"""scala.AnyRef""" :: classInner.filter(cn => cn != virtualTraitName(name, vcc.enclName)).map(cn => Ident(cn)), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(name, vcc.bodies), EmptyTree), transformVCBody(vcc, body, vc_parents, name, mods))
-      }
-    }
-
-    def transformVCBody(vcc: VCContext, body: List[Tree], vc_parents: List[Tree], vc_name: TypeName, mods: Modifiers) = {
-      val constructorTransformed = body.flatMap(d => d match {
-        case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
-          List(noParameterTraitConstructor) ++ vparamss.head.map(p => p match {
-            case ValDef(mods, name, tparams, rhs) => {
-              //val newMods = Modifiers((mods.flags.asInstanceOf[Long] & ~PARAMACCESSOR.asInstanceOf[Long]).asInstanceOf[FlagSet])
-
-              val deferredFlags = if (rhs == EmptyTree) DEFERRED else NoFlags
-              val overrideFlags = if (vcc.isConstructorParmeterOverriden(vc_name, name)) OVERRIDE else NoFlags
-              ValDef(Modifiers(deferredFlags | overrideFlags), name, tparams, rhs)
-            }
-          })
-        case ValDef(mods, name, tparams, rhs) if (mods.hasFlag(PARAMACCESSOR)) => List() //List(ValDef(Modifiers(DEFERRED), name, tparams, EmptyTree))
-        case _ => List(d)
-      })
-
-      constructorTransformed
     }
 
     def makeFinalVirtualClassPart(name: TypeName, enclName: TypeName, mods: Modifiers, typeDef: Tree, tparams: List[TypeDef], classParents: List[Tree], constructorParameters: List[List[(TermName, TypeName)]]): List[Tree] = {
@@ -288,8 +280,8 @@ object family {
         List(td)
     }
 
-    def finalClass(enclName: TypeName, body: List[c.universe.Tree], parents: List[Tree]) = {
-      val vcc = new VCContext(enclName, parents.map(p => getNameFromTree(p).toTypeName), body)
+    def finalClass(vcc: VCContext) = {
+      val ClassDef(_, enclName, _, Template(parents, _, body)) = vcc.familyClassDef
 
       val finalClassBody: List[c.universe.Tree] = noParameterConstructor :: body.flatMap(b =>
         b match {
@@ -329,7 +321,9 @@ object family {
       ClassDef(Modifiers(), finalClassName(enclName).toTypeName, List(), tmpl)
     }
 
-    case class VCContext(val enclName: TypeName, val parents: List[TypeName], val bodies: List[Tree]) {
+    case class VCContext(familyClassDef: ClassDef) {
+      val ClassDef(_, enclName, _, Template(parents, _, body)) = familyClassDef
+
       def getVCClassesSymbols(name: Name): List[Symbol] = {
         try {
           val tpt = Ident(name.toTypeName)
@@ -345,7 +339,7 @@ object family {
       }
 
       def isVCInBodies(name: TypeName) = {
-        bodies.exists(b => b match {
+        body.exists(b => b match {
           case ClassDef(mods, n, _, _) => (isVirtualClass(mods) || isOverridenVirtualClass(mods)) && n == name
           case _ => false
         })
@@ -356,7 +350,7 @@ object family {
       }
 
       def findClassInBodies(name: TypeName) = {
-        bodies.find(b => b match {
+        body.find(b => b match {
           case ClassDef(_, n, _, _) => name == n
           case _ => false
         })
@@ -377,19 +371,19 @@ object family {
       }
 
       def getParentsInParents(name: TypeName) = {
-        this.parents.flatMap(p => getParentsInParent(p.toTypeName, name))
+        this.parents.flatMap(p => getParentsInParent(getNameFromTree(p).toTypeName, name))
       }
 
       def getVCParents(name: TypeName) = {
         (getBaseClassesInBodies(name).filter(p => p != newTypeName("scala.AnyRef") && p != newTypeName("Object")) ++ getParentsInParents(name)).distinct
       }
 
-      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => { computeType(Ident(p)).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName) }).reverse.distinct.reverse
+      lazy val allBaseClasses: List[TypeName] = parents.flatMap(p => { computeType(p).baseClasses.filter(n => !List("scala.AnyRef", "Any", "Object").contains(n.toString)).map(_.name.toTypeName) }).reverse.distinct.reverse
 
-      lazy val toCompleteFromParents: List[TypeName] = parents.flatMap(p => getParentVCClasses(p).map(_.toTypeName)).filter(n => !findClassInBodies(n.toTypeName).isDefined).distinct
+      lazy val toCompleteFromParents: List[TypeName] = parents.flatMap(p => getParentVCClasses(getNameFromTree(p).toTypeName).map(_.toTypeName)).filter(n => !findClassInBodies(n.toTypeName).isDefined).distinct
 
       def getBaseClassesInBodies(name: TypeName): List[TypeName] = {
-        bodies.flatMap { b =>
+        body.flatMap { b =>
           b match {
             case ClassDef(_, n, _, Template(vc_parents, _, _)) if (n == name) => vc_parents.map(t => getNameFromTree(t).toTypeName)
             case _ => List()
@@ -426,7 +420,7 @@ object family {
       }
 
       def getConstructorParametersInParent(vc_name: Name, parent: TypeName) = {
-        val factorySym = computeType(tq"${parent.toTypeName}").member(factoryName(vc_name).toTermName)
+        val factorySym = computeType(tq"$parent").member(factoryName(vc_name).toTermName)
         val res = if (factorySym == NoSymbol)
           List()
         else {
@@ -451,7 +445,7 @@ object family {
       def getMixedConstructorParameters(name: TypeName) = {
         var allLongestConstructors = parents.map { p =>
           val classLin = getVirtualClassLinearization(name)
-          getLongestConstructorParametersInParent(name, p)
+          getLongestConstructorParametersInParent(name, getNameFromTree(p).toTypeName)
         }.distinct
         var mixed: List[(TermName, TypeName)] = List()
         if (allLongestConstructors.length > 0) {
@@ -480,7 +474,7 @@ object family {
       }
 
       def getConstructorParametersForVC(name: TypeName): List[List[(TermName, TypeName)]] = {
-        val constructorParametersWithEmpty = (List(getConstructorParametersInBodies(getVCBody(name).getOrElse(List()))) ++ List(getMixedConstructorParameters(name)) ++ parents.flatMap(p => getConstructorParametersInParent(name, p))).distinct
+        val constructorParametersWithEmpty = (List(getConstructorParametersInBodies(getVCBody(name).getOrElse(List()))) ++ List(getMixedConstructorParameters(name)) ++ parents.flatMap(p => getConstructorParametersInParent(name, getNameFromTree(p).toTypeName))).distinct
         val constructorParametersWithoutEmpty = constructorParametersWithEmpty.filter(cp => !cp.isEmpty)
         val constructorParameters = if (constructorParametersWithoutEmpty.isEmpty) constructorParametersWithEmpty else constructorParametersWithoutEmpty
         //println(s"getConstructorParametersForVC($name) = ${constructorParameters.distinct}")
@@ -492,24 +486,55 @@ object family {
         val constructorParametersFiltered = constructorParameters.map(l => l.filter(p => p._1 == cp_name))
         constructorParametersFiltered.filter(l => !l.isEmpty).length > 1
       }
+
+      /**
+       * we converted the class to a trait so change the constructor from <init> to $init$ and remove the super call...
+       */
+      def convertToTraitConstructor(virtualClassDef: ClassDef): c.universe.Template = {
+        virtualClassDef.impl match {
+          case Template(vc_parents, self, body) =>
+            Template(tq"""scala.AnyRef""" :: getClassMixins(virtualClassDef.name).filter(cn => cn != virtualTraitName(virtualClassDef.name, enclName)).map(cn => Ident(cn)), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(virtualClassDef.name, body), EmptyTree), transformVCBody(virtualClassDef))
+        }
+      }
+
+      def transformVCBody(virtualClassDef: ClassDef) = {
+        val ClassDef(mods, vc_name, _, Template(vc_parents, _, body)) = virtualClassDef
+        val constructorTransformed = body.flatMap(d => d match {
+          case DefDef(mods, name, tparams, vparamss, tpt, rhs) if (name.toString == "<init>") =>
+            List(noParameterTraitConstructor) ++ vparamss.head.map(p => p match {
+              case ValDef(mods, name, tparams, rhs) => {
+                //val newMods = Modifiers((mods.flags.asInstanceOf[Long] & ~PARAMACCESSOR.asInstanceOf[Long]).asInstanceOf[FlagSet])
+
+                val deferredFlags = if (rhs == EmptyTree) DEFERRED else NoFlags
+                val overrideFlags = if (isConstructorParmeterOverriden(vc_name, name)) OVERRIDE else NoFlags
+                ValDef(Modifiers(deferredFlags | overrideFlags), name, tparams, rhs)
+              }
+            })
+          case ValDef(mods, name, tparams, rhs) if (mods.hasFlag(PARAMACCESSOR)) => List() //List(ValDef(Modifiers(DEFERRED), name, tparams, EmptyTree))
+          case _ => List(d)
+        })
+
+        constructorTransformed
+      }
     }
 
     // main transformation happens here
     val result: c.Tree = {
       annottees.map(_.tree).toList match {
         case (cd @ ClassDef(mods, name, tparams, Template(parents, self, body))) :: rest =>
+          val vcc = new VCContext(cd)
           val classDef =
             q"""abstract trait $name[..$tparams] 
           		  extends ..$parents { outer => 
-          		  ..${transformBody(body, name, parents)} 
+          		  ..${transformBody(vcc)} 
                 }"""
           val newObjectDef =
             q"""object ${name.toTermName} { 
           		def apply() = new ${finalClassName(name).toTypeName}; 
-          		${finalClass(name, body, parents)} 
+          		${finalClass(vcc)} 
           	}"""
 
-          q"{ ..${List(classDef, newObjectDef)} }"
+          q"{ $classDef; $newObjectDef }"
       }
     }
     c.Expr[Any](result)
