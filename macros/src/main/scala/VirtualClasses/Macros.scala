@@ -3,6 +3,7 @@ package VirtualClasses
 import scala.reflect.macros.Context
 import scala.language.experimental.macros
 import scala.annotation.StaticAnnotation
+import scala.reflect.internal.annotations.compileTimeOnly
 import scala.collection.mutable.HashMap
 
 object family {
@@ -20,9 +21,11 @@ object family {
 
     /////////// poor endless loop prevention...
 
-    if (c.enclosingMacros.size > 1000) {
-      println(s"Macro has recursed too many times. Aborting. ${c.enclosingMacros}")
-      c.abort(c.macroApplication.pos, "Macro has recursed too many times. Aborting.")
+    val open = c.openMacros
+    val checkRecursion = open.count({ check => (c.macroApplication.toString == check.macroApplication.toString) && (c.enclosingPosition.toString == check.enclosingPosition.toString) })
+    if (checkRecursion > 4)
+    {
+    	c.abort(c.enclosingPosition, "Macro has recursed too many times. Aborting.")
     }
 
     //////////
@@ -40,7 +43,7 @@ object family {
     def finalClassName(className: Name): Name =
       newTypeName(finalClassPrefix + "$" + className)
 
-    lazy val noParameterConstructor = q"def ${nme.CONSTRUCTOR}() = { super.${nme.CONSTRUCTOR}(); () }"
+    lazy val noParameterConstructor = parameterConstructor(List())
     lazy val noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
 
     def parameterConstructor(params: List[(TermName, TypeName)]) = {
@@ -545,7 +548,15 @@ class family extends StaticAnnotation {
   def macroTransform(annottees: Any*) = macro family.impl
 }
 
-class virtual extends StaticAnnotation
+object virtual {
+  def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
+    c.abort(c.enclosingPosition, "@virtual annotations have to reside inside @family annotations. Only classes can be annotated with @virtual.")
+  }
+}
+
+class virtual extends StaticAnnotation {
+  def macroTransform(annottees: Any*) = macro virtual.impl
+}
 
 object printMacro {
   def impl(c: Context)(annottees: c.Expr[Any]*): c.Expr[Any] = {
