@@ -23,9 +23,8 @@ object family {
 
     val open = c.openMacros
     val checkRecursion = open.count({ check => (c.macroApplication.toString == check.macroApplication.toString) && (c.enclosingPosition.toString == check.enclosingPosition.toString) })
-    if (checkRecursion > 4)
-    {
-    	c.abort(c.enclosingPosition, "Macro has recursed too many times. Aborting.")
+    if (checkRecursion > 10) {
+      c.abort(c.enclosingPosition, "Macro has recursed too many times. Aborting.")
     }
 
     //////////
@@ -35,13 +34,13 @@ object family {
     def finalClassPrefix = "VC_FINAL"
 
     def virtualTraitName(className: Name, enclClassName: Name): Name =
-      newTypeName(virtualTraitPrefix + "$" + enclClassName + "$" + className)
+      newTypeName(s"$virtualTraitPrefix$$$enclClassName$$$className")
     def factoryName(className: Name): Name =
       className
-    def fixClassName(className: Name, enclClassName: Name): Name =
-      newTypeName(fixClassPrefix + "$" + enclClassName + "$" + className)
     def finalClassName(className: Name): Name =
-      newTypeName(finalClassPrefix + "$" + className)
+      newTypeName(s"$finalClassPrefix$$$className")
+    def fixClassName(className: Name, enclClassName: Name): Name =
+      newTypeName(s"$fixClassPrefix$$$enclClassName$$$className")
 
     lazy val noParameterConstructor = parameterConstructor(List())
     lazy val noParameterTraitConstructor = DefDef(Modifiers(), newTermName("$init$"), List(), List(List()), TypeTree(), Block(List(), Literal(Constant(()))))
@@ -63,10 +62,6 @@ object family {
 
     def isOverridenVirtualClass(mods: c.universe.Modifiers) = {
       isVirtualClass(mods) && isOverriden(mods)
-    }
-
-    def parentContainsVirtualClass(parent: Tree, virtualClass: TypeName) = {
-      computeType(parent).declarations.exists(s => s.name == virtualTraitName(virtualClass, getNameFromTree(parent).toTypeName))
     }
 
     def getParentsInParent(parent: TypeName, name: TypeName) = {
@@ -152,36 +147,13 @@ object family {
       }
     }
 
-    def getTypeParams(name: TypeName, bodies: List[Tree]) = {
-      val res = bodies.map(b => b match {
-        case ClassDef(_, n, tparams, impl) if (n == getNameFromSub(name)) =>
-          Some(tparams)
-        case _ => None
-      })
-      val res2 = res.filter(o => o.isDefined)
-      if (res2.size > 0)
-        res2.head
-      else
-        None
+    def parentContainsVirtualClass(parent: Tree, virtualClass: TypeName) = {
+      computeType(parent).declarations.exists(s => s.name == virtualTraitName(virtualClass, getNameFromTree(parent).toTypeName))
     }
 
-    def getTypeNames(tparams: List[TypeDef]) = {
-      tparams.map(t => t match {
-        case TypeDef(mods, name, tparams, rhs) => name
-      })
-    }
-
-    def getTypeApplied(name: TypeName, bodies: List[Tree]) = {
-      val typeParams = getTypeParams(getNameFromSub(name).toTypeName, bodies)
-      if (typeParams.isEmpty || typeParams.get.isEmpty)
-        Ident(name)
-      else
-        AppliedTypeTree(Ident(name), getTypeNames(typeParams.get).map(t => Ident(t)))
-    }
-
-    def mapInheritanceRelation(inheritRel: List[TypeName], bodies: List[Tree]) = {
+    def mapInheritanceRelation(inheritRel: List[TypeName], bodies: List[Tree]): List[Tree] = {
       val inheritRelMapped = inheritRel.map(s =>
-        getTypeApplied(s, bodies))
+        Ident(s))
       inheritRelMapped
     }
 
@@ -199,6 +171,25 @@ object family {
         })
     }
 
+    /**
+     * Transforms the body of a virtual class family. All information about the family is passed in using a VCContext.
+     *
+     * Each virtual class family is transformed as follows:
+     * 1. if a virtual class is encountered, the virtual class is transformed:
+     * 		@virtual class Inner extends Parent1 with Parent2 {
+     *   		...body...
+     * 		}
+     *   	-------------
+     *    	trait VC_TRAIT$Outer$Inner extends VC_TRAIT$Outer$Parent1 with VC_TRAIT$Outer$Parent2 {
+     *     		...body...
+     *      }
+     *      type Inner :> Null <: AnyRef with Parent1 with Parent2 with VC_TRAIT$Outer$Inner
+     *
+     *      def Inner(): Inner
+     *
+     * 2. The <init> definition is removed
+     * 3. All other definitions are ignored
+     */
     def transformBody(vcc: VCContext): List[Tree] = {
       val ClassDef(_, enclName, _, Template(parents, _, body)) = vcc.familyClassDef
 
@@ -235,7 +226,7 @@ object family {
             val list = if (isAbstract(mods)) List() else constructorParameters.flatMap { cp =>
               val vparamss = List(
                 cp.map { case (name, tpe) => ValDef(Modifiers(PARAM), name, Ident(tpe), EmptyTree) })
-              List[Tree](DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, getTypeApplied(name, body), EmptyTree))
+              List[Tree](DefDef(Modifiers(DEFERRED), factoryName(name).toTermName, tparams, vparamss, Ident(name), EmptyTree))
             }
 
             List(
@@ -263,10 +254,7 @@ object family {
 
       val td = TypeDef(Modifiers(), name, tparams, typeDef)
 
-      val fixClassTypeName = if (tparams.isEmpty)
-        Ident(fixClassName(name, enclName).toTypeName)
-      else
-        AppliedTypeTree(Ident(fixClassName(name, enclName).toTypeName), getTypeNames(tparams).map(t => Ident(t)))
+      val fixClassTypeName = Ident(fixClassName(name, enclName).toTypeName)
 
       if (!(isAbstract(mods))) {
         var counter = 0
@@ -283,6 +271,13 @@ object family {
         List(td)
     }
 
+    /**
+     * Builds the part of a virtual class that resides inside of the VC_FINAL class
+     * The example of transformBody builds this:
+     * 		type Inner = AnyRef with Parent1 with Parent2 with VC_TRAIT$Outer$Inner
+     *   	class VC_FIX$Outer$Inner() extends VC_TRAIT$Outer$Parent1 with VC_TRAIT$Outer$Parent2 with VC_TRAIT$Outer$Inner
+     *      def Inner() = new VC_FIX$Outer$Inner()
+     */
     def finalClass(vcc: VCContext) = {
       val ClassDef(_, enclName, _, Template(parents, _, body)) = vcc.familyClassDef
 
@@ -496,7 +491,7 @@ object family {
       def convertToTraitConstructor(virtualClassDef: ClassDef): c.universe.Template = {
         virtualClassDef.impl match {
           case Template(vc_parents, self, body) =>
-            Template(tq"""scala.AnyRef""" :: getClassMixins(virtualClassDef.name).filter(cn => cn != virtualTraitName(virtualClassDef.name, enclName)).map(cn => Ident(cn)), ValDef(Modifiers(PRIVATE), newTermName("self"), getTypeApplied(virtualClassDef.name, body), EmptyTree), transformVCBody(virtualClassDef))
+            Template(tq"""scala.AnyRef""" :: getClassMixins(virtualClassDef.name).filter(cn => cn != virtualTraitName(virtualClassDef.name, enclName)).map(cn => Ident(cn)), ValDef(Modifiers(PRIVATE), newTermName("self"), Ident(virtualClassDef.name), EmptyTree), transformVCBody(virtualClassDef))
         }
       }
 

@@ -2,6 +2,7 @@ package auto
 
 import specs.UnitSpec
 import typeCheckTests._
+import VirtualClasses._
 
 class FailTests extends UnitSpec {
   "@virtual" should "reside in @family" in {
@@ -27,4 +28,8 @@ class FailTests extends UnitSpec {
   "constructor parameters" should "not have tparams" in {
     ShouldNotTypecheck("@family class A { @virtual class B(val c: List[String]) }", "Constructor parameter c cannot have type parameters.")
   }
+
+  /*"exisiting virtual classes in base families" should "be overriden by using the override modifier" in {
+    ShouldNotTypecheck("@family class A { @virtual class InnerA }; @family class B extends A { @virtual class InnerA }")
+  }*/
 }
