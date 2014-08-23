@@ -6,9 +6,9 @@ object BuildSettings {
     organization := "com.github.xmanu.virtual-classes",
     version := "0.1",
     scalacOptions ++= Seq("-deprecation", "-feature"),
-    scalaVersion := "2.11.1",
+    scalaVersion := "2.11.2",
     resolvers += Resolver.sonatypeRepo("snapshots"),
-    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.0" cross CrossVersion.full)
+    addCompilerPlugin("org.scalamacros" % "paradise" % "2.0.1" cross CrossVersion.full)
   )
 }
 
@@ -29,7 +29,7 @@ object MyBuild extends Build {
     settings = buildSettings ++ Seq(
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _)
-      //libraryDependencies  += ("org.scalamacros" %% "quasiquotes" % "2.0.0")
+      //libraryDependencies  += ("org.scalamacros" %% "quasiquotes" % "2.0.1")
 	  )
   )
 
@@ -37,16 +37,16 @@ object MyBuild extends Build {
     "virtual-classes-core",
     file("core"),
     settings = buildSettings ++ Seq(
-		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test")
+		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test")
   ) dependsOn(macros)
   
   lazy val graph: Project = Project(
 	  "virtual-classes-graph-example",
 	  file("graph-example"),
       settings = buildSettings ++ Seq(
-  		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.1.5" % "test",
-		libraryDependencies += "org.scalafx" %% "scalafx" % "1.0.0-R8",
-		unmanagedJars in Compile += Attributed.blank(file(scala.util.Properties.javaHome) / "/lib/jfxrt.jar"),
+  		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test",
+		libraryDependencies += "org.scalafx" %% "scalafx" % "2.2.60-R9",
+		unmanagedJars in Compile += Attributed.blank(file(scala.util.Properties.javaHome) / "/lib/ext/jfxrt.jar"),
 		fork := true)
   ) dependsOn(macros)
 }

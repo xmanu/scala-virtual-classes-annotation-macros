@@ -30,7 +30,7 @@ object GraphExample extends JFXApp {
     width = 500
     height = 500
     scene = new Scene {
-      fill = Color.LIGHTGREEN
+      fill = Color.LightGreen
       root = new AnchorPane {
         content = Set(dijkstra.uiRepresentation)
         onMouseClicked = (ae: MouseEvent) => {
@@ -142,7 +142,7 @@ object GraphExample extends JFXApp {
     lazy val uiRepresentation = new StackPane {
       content = Set(new Circle {
         radius = 10
-        fill = Color.RED
+        fill = Color.Red
       }, new Label {
         text = name
         font = new Font(10)
@@ -180,7 +180,7 @@ object GraphExample extends JFXApp {
       content = Set(new Rectangle {
         width = 20
         height = 15
-        fill = Color.RED
+        fill = Color.Red
       }, new Label {
         text = name
         font = new Font(10)
@@ -212,7 +212,7 @@ object GraphExample extends JFXApp {
     override lazy val uiRepresentation = new StackPane {
       content = Set(new Circle {
         radius = 10
-        fill = if (highlighted) Color.GREEN else Color.RED
+        fill = if (highlighted) Color.Green else Color.Red
       }, new Label {
         text = name
         font = new Font(10)
@@ -227,7 +227,7 @@ object GraphExample extends JFXApp {
       content = Set(new Rectangle {
         width = 20
         height = 15
-        fill = if (highlighted) Color.GREEN else Color.RED
+        fill = if (highlighted) Color.Green else Color.Red
       }, new Label {
         text = name
         font = new Font(10)
