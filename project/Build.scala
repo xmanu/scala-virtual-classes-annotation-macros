@@ -29,7 +29,6 @@ object MyBuild extends Build {
     settings = buildSettings ++ Seq(
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _),
       libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _)
-      //libraryDependencies  += ("org.scalamacros" %% "quasiquotes" % "2.0.1")
 	  )
   )
 
@@ -46,7 +45,6 @@ object MyBuild extends Build {
       settings = buildSettings ++ Seq(
   		libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test",
 		libraryDependencies += "org.scalafx" %% "scalafx" % "2.2.60-R9",
-		unmanagedJars in Compile += Attributed.blank(file(scala.util.Properties.javaHome) / "/lib/ext/jfxrt.jar"),
 		fork := true)
   ) dependsOn(macros)
 }
