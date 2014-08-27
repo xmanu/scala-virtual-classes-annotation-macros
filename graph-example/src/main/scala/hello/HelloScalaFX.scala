@@ -21,7 +21,7 @@ object HelloScalaFX extends JFXApp {
   def singleNode = new StackPane {
     content = Set(new Circle {
       radius = 10
-      fill <== when(hover) choose Color.GREEN otherwise Color(0,0,0,0)
+      fill <== when(hover) choose Color.Green otherwise Color(0,0,0,0)
     }, new Label {
       text = "T"
     })
@@ -34,15 +34,15 @@ object HelloScalaFX extends JFXApp {
     endX = 100
     endY = 100
   }
-  
+
   val contentSet = (for {i <- (0 to 10)} yield singleNode) ++ List(line)
-  
+
   stage = new JFXApp.PrimaryStage {
     title = "Hello World"
     width = 600
     height = 450
     scene = new Scene {
-      fill = Color.LIGHTGREEN
+      fill = Color.LightGreen
       root = new AnchorPane {
         prefWidth = 600
         prefHeight = 450
